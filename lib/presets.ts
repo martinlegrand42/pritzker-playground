@@ -1,4 +1,4 @@
-export type EngineKind = 'aura' | 'field'
+export type EngineKind = 'aura' | 'prism'
 
 export interface AuraParams {
   size: number
@@ -18,19 +18,18 @@ export interface AuraParams {
   colBg: string
 }
 
-export interface FieldParams {
-  scale: number
-  warp: number
-  contrast: number
-  speed: number
-  bands: number
+export interface PrismParams {
+  size: number
+  softness: number
+  glowSize: number
+  hueSpeed: number
+  hueSpread: number
+  saturation: number
   grain: number
   grainSize: number
   hoverReact: boolean
-  col0: string
-  col1: string
-  col2: string
-  col3: string
+  hoverStrength: number
+  colBg: string
 }
 
 interface AuraPalette {
@@ -41,17 +40,7 @@ interface AuraPalette {
   colBg: string
 }
 
-interface FieldPalette {
-  name: string
-  col0: string
-  col1: string
-  col2: string
-  col3: string
-}
-
-// Four brand palettes, shared across both engines: a light core/high value
-// down to a near-black rim/background, so "Aura"'s center-out mix and
-// "Field"'s low-to-high value map read as the same identity either way.
+// Four brand palettes for Aura's center-out mix.
 export const AURA_PALETTES: AuraPalette[] = [
   { name: 'Pritzker Blue', colCore: '#e4ecff', colMid: '#6f95ff', colEdge: '#1c2b7a', colBg: '#04050d' },
   { name: 'Ember', colCore: '#ffe9c2', colMid: '#ff9d3d', colEdge: '#7a2600', colBg: '#0d0300' },
@@ -59,12 +48,9 @@ export const AURA_PALETTES: AuraPalette[] = [
   { name: 'Orchid', colCore: '#fbe6ff', colMid: '#c060e0', colEdge: '#4a1060', colBg: '#0a020c' },
 ]
 
-export const FIELD_PALETTES: FieldPalette[] = [
-  { name: 'Pritzker Blue', col0: '#04050d', col1: '#1c2b7a', col2: '#6f95ff', col3: '#e4ecff' },
-  { name: 'Ember', col0: '#0d0300', col1: '#7a2600', col2: '#ff9d3d', col3: '#ffe9c2' },
-  { name: 'Verdant', col0: '#020a06', col1: '#0d4a2e', col2: '#5fe0a0', col3: '#e6fff2' },
-  { name: 'Orchid', col0: '#0a020c', col1: '#4a1060', col2: '#c060e0', col3: '#fbe6ff' },
-]
+// Prism's disc cycles through the full hue wheel on its own, so it doesn't
+// take a brand palette — just a backdrop, reusing the same four grounds.
+export const PRISM_BACKGROUNDS = AURA_PALETTES.map(({ name, colBg }) => ({ name, colBg }))
 
 export const AURA_DEFAULT: AuraParams = {
   size: 0.34,
@@ -81,16 +67,18 @@ export const AURA_DEFAULT: AuraParams = {
   ...AURA_PALETTES[0],
 }
 
-export const FIELD_DEFAULT: FieldParams = {
-  scale: 2.2,
-  warp: 1.4,
-  contrast: 1.2,
-  speed: 0.08,
-  bands: 0,
+export const PRISM_DEFAULT: PrismParams = {
+  size: 0.38,
+  softness: 0.04,
+  glowSize: 0.25,
+  hueSpeed: 0.05,
+  hueSpread: 0.6,
+  saturation: 0.75,
   grain: 0.05,
   grainSize: 2.2,
   hoverReact: true,
-  ...FIELD_PALETTES[0],
+  hoverStrength: 0.35,
+  colBg: PRISM_BACKGROUNDS[0].colBg,
 }
 
 function rand(min: number, max: number) {
@@ -119,18 +107,20 @@ export function randomizeAura(current: AuraParams): AuraParams {
   }
 }
 
-export function randomizeField(current: FieldParams): FieldParams {
-  const palette = randPalette(FIELD_PALETTES)
+export function randomizePrism(current: PrismParams): PrismParams {
+  const { colBg } = randPalette(PRISM_BACKGROUNDS)
   return {
     ...current,
-    ...palette,
-    scale: rand(1.3, 4),
-    warp: rand(0.4, 2.6),
-    contrast: rand(0.8, 2),
-    speed: rand(0.02, 0.28),
-    bands: Math.random() < 0.35 ? Math.round(rand(3, 14)) : 0,
+    colBg,
+    size: rand(0.28, 0.48),
+    softness: rand(0.02, 0.12),
+    glowSize: rand(0.14, 0.4),
+    hueSpeed: rand(0.02, 0.16),
+    hueSpread: rand(0.2, 1.2),
+    saturation: rand(0.5, 0.95),
     grain: rand(0, 0.1),
     grainSize: rand(1.4, 4),
+    hoverStrength: rand(0.15, 0.6),
   }
 }
 

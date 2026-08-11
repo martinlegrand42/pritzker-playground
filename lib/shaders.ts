@@ -6,7 +6,7 @@ void main() {
 }
 `
 
-// Ashima 3D simplex noise + a little fbm, shared by both engines.
+// Ashima 3D simplex noise, shared by both engines.
 const NOISE = /* glsl */ `
 vec3 mod289(vec3 x){ return x - floor(x * (1.0/289.0)) * 289.0; }
 vec4 mod289(vec4 x){ return x - floor(x * (1.0/289.0)) * 289.0; }
@@ -54,18 +54,6 @@ float snoise(vec3 v){
   vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
   m = m * m;
   return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
-}
-
-float fbm(vec3 p){
-  float a = 0.5;
-  float f = 1.0;
-  float s = 0.0;
-  for (int i = 0; i < 5; i++) {
-    s += a * snoise(p * f);
-    f *= 2.0;
-    a *= 0.5;
-  }
-  return s;
 }
 
 // Cheap animated film grain — used to dither the gradient and kill banding.
@@ -153,74 +141,64 @@ void main(){
 `
 
 // ---------------------------------------------------------------------------
-// VERSION B — "Field": a divergent take. Instead of one object, the identity
-// becomes an environment: a domain-warped thermal gradient field that can be
-// banded into contour lines. A brand wallpaper / motion-background generator.
+// VERSION B — "Prism": a divergent take. Instead of a fixed brand palette,
+// the mark becomes a perfect disc cycling continuously through the full hue
+// wheel, with a soft highlight that drifts toward the cursor on hover.
 // ---------------------------------------------------------------------------
-export const FIELD_FRAG = /* glsl */ `
+export const PRISM_FRAG = /* glsl */ `
 precision highp float;
 
 uniform vec2  uResolution;
 uniform float uTime;
-uniform vec2  uMouse;       // 0..1
-uniform float uHover;
-uniform float uScale;       // zoom of the field
-uniform float uWarp;        // domain-warp intensity
-uniform float uSpeed;       // flow speed
-uniform float uBands;       // thermal contour count (0 = smooth)
-uniform float uContrast;
+uniform vec2  uMouse;         // in aspect-corrected uv space, like Aura
+uniform float uHover;         // 0..1 eased
+uniform float uHoverStrength; // how much the highlight nudges toward the cursor
+uniform float uSize;          // disc radius
+uniform float uSoftness;      // edge softness
+uniform float uGlowSize;      // radius of the central highlight
+uniform float uHueSpeed;      // hue rotation speed
+uniform float uHueSpread;     // how much hue varies spatially across the disc
+uniform float uSaturation;
 uniform float uGrain;
 uniform float uGrainSize;
-uniform vec3  uCol0;
-uniform vec3  uCol1;
-uniform vec3  uCol2;
-uniform vec3  uCol3;
+uniform vec3  uColBg;
 
 ${NOISE}
 
-vec3 palette(float v){
-  v = clamp(v, 0.0, 1.0);
-  vec3 c = mix(uCol0, uCol1, smoothstep(0.0, 0.4, v));
-  c = mix(c, uCol2, smoothstep(0.35, 0.72, v));
-  c = mix(c, uCol3, smoothstep(0.7, 1.0, v));
-  return c;
+vec3 hsv2rgb(vec3 c){
+  vec3 p = abs(fract(c.xxx + vec3(0.0, 1.0 / 3.0, 2.0 / 3.0)) * 6.0 - 3.0);
+  vec3 rgb = clamp(p - 1.0, 0.0, 1.0);
+  return c.z * mix(vec3(1.0), rgb, c.y);
 }
 
 void main(){
-  vec2 uv = gl_FragCoord.xy / uResolution;
-  float aspect = uResolution.x / uResolution.y;
-  vec2 p = vec2(uv.x * aspect, uv.y) * uScale;
+  vec2 uv = (gl_FragCoord.xy - 0.5 * uResolution) / min(uResolution.x, uResolution.y);
 
-  float t = uTime * uSpeed;
+  float rr = length(uv);
+  float ang = atan(uv.y, uv.x);
+  float t = rr / max(uSize, 0.0001);
+  float mask = 1.0 - smoothstep(1.0 - uSoftness, 1.0 + uSoftness, t);
 
-  // pointer warps the field locally
-  vec2 m = (uMouse - 0.5) * 2.0;
-  p += m * uHover * 0.6;
+  // hue rotates continuously over time, with a little spatial banding so
+  // it's not a single flat color at any instant
+  float hue = fract(uTime * uHueSpeed + uv.y * uHueSpread * 0.5 + sin(ang) * uHueSpread * 0.12);
+  vec3 col = hsv2rgb(vec3(hue, uSaturation, 1.0));
 
-  // iterative domain warping
-  vec2 q = vec2(fbm(vec3(p, t)), fbm(vec3(p + 5.2, t + 1.3)));
-  vec2 r = vec2(
-    fbm(vec3(p + q * uWarp + vec2(1.7, 9.2), t * 1.1)),
-    fbm(vec3(p + q * uWarp + vec2(8.3, 2.8), t * 0.9))
-  );
-  float v = fbm(vec3(p + r * uWarp, t * 0.8));
-  v = v * 0.5 + 0.5;
+  // limb darkening toward the rim, like a lit sphere
+  col *= mix(1.0, 0.55, smoothstep(0.0, 1.0, t));
 
-  // contrast around mid
-  v = clamp((v - 0.5) * uContrast + 0.5, 0.0, 1.0);
+  // the highlight nudges toward the cursor on hover — gently, it never
+  // travels all the way to the pointer
+  vec2 glowCenter = uMouse * uHoverStrength * uHover * 0.5;
+  float glow = exp(-pow(length(uv - glowCenter) / max(uGlowSize, 0.02), 2.0));
+  col = mix(col, vec3(1.0), glow * 0.85);
 
-  // optional thermal banding (contour look)
-  if (uBands > 0.5) {
-    float banded = floor(v * uBands) / max(uBands - 1.0, 1.0);
-    v = mix(v, banded, 0.85);
-  }
-
-  vec3 col = palette(v);
+  vec3 outCol = mix(uColBg, col, mask);
 
   vec2 grainCell = floor(gl_FragCoord.xy / max(uGrainSize, 1.0));
   float gr = grain(grainCell, uTime * 20.0);
-  col += (gr - 0.5) * uGrain;
+  outCol += (gr - 0.5) * uGrain;
 
-  gl_FragColor = vec4(col, 1.0);
+  gl_FragColor = vec4(outCol, 1.0);
 }
 `

@@ -4,18 +4,18 @@ import { ColorField, Section, Slider, Toggle } from './ui-controls'
 import { cn } from '@/lib/utils'
 import {
   AURA_PALETTES,
-  FIELD_PALETTES,
+  PRISM_BACKGROUNDS,
   type AuraParams,
-  type FieldParams,
+  type PrismParams,
   type EngineKind,
 } from '@/lib/presets'
 
 interface ControlPanelProps {
   kind: EngineKind
   aura: AuraParams
-  field: FieldParams
+  prism: PrismParams
   setAura: (p: AuraParams) => void
-  setField: (p: FieldParams) => void
+  setPrism: (p: PrismParams) => void
 }
 
 function PaletteRow({
@@ -56,7 +56,7 @@ function PaletteRow({
   )
 }
 
-export function ControlPanel({ kind, aura, field, setAura, setField }: ControlPanelProps) {
+export function ControlPanel({ kind, aura, prism, setAura, setPrism }: ControlPanelProps) {
   if (kind === 'aura') {
     return (
       <div className="flex flex-col">
@@ -105,49 +105,37 @@ export function ControlPanel({ kind, aura, field, setAura, setField }: ControlPa
 
   return (
     <div className="flex flex-col">
-      <Section title="Palette">
+      <Section title="Background">
         <PaletteRow
-          swatches={FIELD_PALETTES.map((p) => ({
-            name: p.name,
-            colors: [p.col0, p.col1, p.col2, p.col3],
-          }))}
-          active={[field.col0, field.col1, field.col2, field.col3]}
-          onSelect={(i) => {
-            const p = FIELD_PALETTES[i]
-            setField({ ...field, col0: p.col0, col1: p.col1, col2: p.col2, col3: p.col3 })
-          }}
+          swatches={PRISM_BACKGROUNDS.map((p) => ({ name: p.name, colors: [p.colBg] }))}
+          active={[prism.colBg]}
+          onSelect={(i) => setPrism({ ...prism, colBg: PRISM_BACKGROUNDS[i].colBg })}
         />
         <div className="grid grid-cols-1 gap-3 pt-1">
-          <ColorField label="Low" value={field.col0} onChange={(v) => setField({ ...field, col0: v })} />
-          <ColorField label="Mid-low" value={field.col1} onChange={(v) => setField({ ...field, col1: v })} />
-          <ColorField label="Mid-high" value={field.col2} onChange={(v) => setField({ ...field, col2: v })} />
-          <ColorField label="High" value={field.col3} onChange={(v) => setField({ ...field, col3: v })} />
+          <ColorField label="Background" value={prism.colBg} onChange={(v) => setPrism({ ...prism, colBg: v })} />
         </div>
       </Section>
 
-      <Section title="Field">
-        <Slider label="Scale" value={field.scale} min={1} max={4.5} onChange={(v) => setField({ ...field, scale: v })} />
-        <Slider label="Warp" value={field.warp} min={0} max={3} onChange={(v) => setField({ ...field, warp: v })} />
-        <Slider label="Contrast" value={field.contrast} min={0.6} max={2.4} onChange={(v) => setField({ ...field, contrast: v })} />
+      <Section title="Form">
+        <Slider label="Size" value={prism.size} min={0.2} max={0.6} onChange={(v) => setPrism({ ...prism, size: v })} />
+        <Slider label="Softness" value={prism.softness} min={0.01} max={0.25} onChange={(v) => setPrism({ ...prism, softness: v })} />
+        <Slider label="Glow size" value={prism.glowSize} min={0.1} max={0.6} onChange={(v) => setPrism({ ...prism, glowSize: v })} />
+      </Section>
+
+      <Section title="Color">
+        <Slider label="Hue speed" value={prism.hueSpeed} min={0.01} max={0.3} onChange={(v) => setPrism({ ...prism, hueSpeed: v })} />
+        <Slider label="Hue spread" value={prism.hueSpread} min={0} max={1.5} onChange={(v) => setPrism({ ...prism, hueSpread: v })} />
+        <Slider label="Saturation" value={prism.saturation} min={0.3} max={1} onChange={(v) => setPrism({ ...prism, saturation: v })} />
       </Section>
 
       <Section title="Motion">
-        <Slider label="Flow speed" value={field.speed} min={0.01} max={0.35} onChange={(v) => setField({ ...field, speed: v })} />
-        <Slider
-          label="Thermal bands"
-          value={field.bands}
-          min={0}
-          max={16}
-          step={1}
-          format={(v) => (v < 0.5 ? 'off' : String(Math.round(v)))}
-          onChange={(v) => setField({ ...field, bands: v })}
-        />
-        <Toggle label="React to hover" checked={field.hoverReact} onChange={(v) => setField({ ...field, hoverReact: v })} />
+        <Toggle label="React to hover" checked={prism.hoverReact} onChange={(v) => setPrism({ ...prism, hoverReact: v })} />
+        <Slider label="Hover intensity" value={prism.hoverStrength} min={0} max={1} onChange={(v) => setPrism({ ...prism, hoverStrength: v })} />
       </Section>
 
       <Section title="Texture">
-        <Slider label="Grain" value={field.grain} min={0} max={0.16} onChange={(v) => setField({ ...field, grain: v })} />
-        <Slider label="Grain size" value={field.grainSize} min={1} max={6} step={0.1} onChange={(v) => setField({ ...field, grainSize: v })} />
+        <Slider label="Grain" value={prism.grain} min={0} max={0.16} onChange={(v) => setPrism({ ...prism, grain: v })} />
+        <Slider label="Grain size" value={prism.grainSize} min={1} max={6} step={0.1} onChange={(v) => setPrism({ ...prism, grainSize: v })} />
       </Section>
     </div>
   )

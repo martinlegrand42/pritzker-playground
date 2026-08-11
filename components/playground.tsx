@@ -8,11 +8,11 @@ import { cn } from '@/lib/utils'
 import { exportPng, recordLoop, downloadVideo } from '@/lib/export'
 import {
   AURA_DEFAULT,
-  FIELD_DEFAULT,
+  PRISM_DEFAULT,
   randomizeAura,
-  randomizeField,
+  randomizePrism,
   type AuraParams,
-  type FieldParams,
+  type PrismParams,
   type EngineKind,
 } from '@/lib/presets'
 
@@ -27,13 +27,13 @@ const ASPECTS: { id: Aspect; label: string; ratio?: number }[] = [
 
 const ENGINES: { id: EngineKind; label: string; sub: string }[] = [
   { id: 'aura', label: 'Aura', sub: 'The mark' },
-  { id: 'field', label: 'Field', sub: 'The environment' },
+  { id: 'prism', label: 'Prism', sub: 'The spectrum' },
 ]
 
 export function Playground() {
   const [kind, setKind] = useState<EngineKind>('aura')
   const [aura, setAura] = useState<AuraParams>(AURA_DEFAULT)
-  const [field, setField] = useState<FieldParams>(FIELD_DEFAULT)
+  const [prism, setPrism] = useState<PrismParams>(PRISM_DEFAULT)
   const [aspect, setAspect] = useState<Aspect>('fill')
   const [error, setError] = useState<string | null>(null)
 
@@ -54,12 +54,12 @@ export function Playground() {
 
   const handleRandomize = () => {
     if (kind === 'aura') setAura((p) => randomizeAura(p))
-    else setField((p) => randomizeField(p))
+    else setPrism((p) => randomizePrism(p))
   }
 
   const handleReset = () => {
     if (kind === 'aura') setAura(AURA_DEFAULT)
-    else setField(FIELD_DEFAULT)
+    else setPrism(PRISM_DEFAULT)
   }
 
   const handleExportPng = () => {
@@ -190,7 +190,7 @@ export function Playground() {
                 : { width: '100%', height: '100%' }
             }
           >
-            <Stage kind={kind} aura={aura} field={field} canvasRef={canvasRef} onError={setError} />
+            <Stage kind={kind} aura={aura} prism={prism} canvasRef={canvasRef} onError={setError} />
             {error ? (
               <div className="absolute inset-0 flex items-center justify-center bg-secondary/95 p-6 text-center text-sm text-muted-foreground">
                 {error}
@@ -218,13 +218,13 @@ export function Playground() {
             </button>
           </div>
 
-          <ControlPanel kind={kind} aura={aura} field={field} setAura={setAura} setField={setField} />
+          <ControlPanel kind={kind} aura={aura} prism={prism} setAura={setAura} setPrism={setPrism} />
 
           <div className="mt-auto border-t border-border px-5 py-4">
             <p className="text-[11px] leading-relaxed text-muted-foreground">
               {kind === 'aura'
                 ? 'A living mark that breathes and wobbles — never a perfect circle. Hover it, generate variations, then export a still or a 6-second loop.'
-                : 'The identity as an environment: a warped thermal gradient for wallpapers and motion backgrounds. Add thermal bands for a contour look.'}
+                : 'A perfect disc cycling through the full spectrum, glowing brightest at its center. Hover it and the highlight drifts gently toward the cursor.'}
             </p>
           </div>
         </aside>

@@ -2,28 +2,28 @@
 
 import { useEffect, useRef } from 'react'
 import { createRenderer, ContextLostError, type Renderer, type Uniforms } from '@/lib/shader-runtime'
-import { AURA_FRAG, FIELD_FRAG } from '@/lib/shaders'
-import { hexToRgb, type AuraParams, type FieldParams, type EngineKind } from '@/lib/presets'
+import { AURA_FRAG, PRISM_FRAG } from '@/lib/shaders'
+import { hexToRgb, type AuraParams, type PrismParams, type EngineKind } from '@/lib/presets'
 
 interface StageProps {
   kind: EngineKind
   aura: AuraParams
-  field: FieldParams
+  prism: PrismParams
   canvasRef: React.RefObject<HTMLCanvasElement | null>
   onError?: (message: string) => void
 }
 
-export function Stage({ kind, aura, field, canvasRef, onError }: StageProps) {
+export function Stage({ kind, aura, prism, canvasRef, onError }: StageProps) {
   // Keep latest params in refs so the render loop reads fresh values
   // without tearing down WebGL on every slider change.
   const auraRef = useRef(aura)
-  const fieldRef = useRef(field)
+  const prismRef = useRef(prism)
   const kindRef = useRef(kind)
   // Deliberate "latest ref" sync: written during render, only ever read
   // later from the rAF loop/event handlers below — never read here.
   /* eslint-disable react-hooks/refs */
   auraRef.current = aura
-  fieldRef.current = field
+  prismRef.current = prism
   kindRef.current = kind
   /* eslint-enable react-hooks/refs */
 
@@ -45,7 +45,7 @@ export function Stage({ kind, aura, field, canvasRef, onError }: StageProps) {
     const init = (attempt: number) => {
       if (cancelled) return
       try {
-        renderer = createRenderer(canvas, kindRef.current === 'aura' ? AURA_FRAG : FIELD_FRAG)
+        renderer = createRenderer(canvas, kindRef.current === 'aura' ? AURA_FRAG : PRISM_FRAG)
         onError?.('')
         raf = requestAnimationFrame(frame)
       } catch (err) {
@@ -66,14 +66,16 @@ export function Stage({ kind, aura, field, canvasRef, onError }: StageProps) {
       const hover = hoverRef.current
       const [pu, pv] = pointerRef.current
 
+      // aspect-corrected uv space, matching gl_FragCoord math in both shaders
+      const w = canvas.width
+      const h = canvas.height
+      const minWH = Math.min(w, h) || 1
+      const mx = ((pu - 0.5) * w) / minWH
+      const my = ((pv - 0.5) * h) / minWH
+
       let uniforms: Uniforms
       if (kindRef.current === 'aura') {
         const p = auraRef.current
-        const w = canvas.width
-        const h = canvas.height
-        const minWH = Math.min(w, h) || 1
-        const mx = ((pu - 0.5) * w) / minWH
-        const my = ((pv - 0.5) * h) / minWH
         uniforms = {
           uTime: time,
           uMouse: [mx, my],
@@ -94,22 +96,21 @@ export function Stage({ kind, aura, field, canvasRef, onError }: StageProps) {
           uColBg: hexToRgb(p.colBg),
         }
       } else {
-        const p = fieldRef.current
+        const p = prismRef.current
         uniforms = {
           uTime: time,
-          uMouse: [pu, pv],
+          uMouse: [mx, my],
           uHover: p.hoverReact ? hover : 0,
-          uScale: p.scale,
-          uWarp: p.warp,
-          uSpeed: p.speed,
-          uBands: p.bands,
-          uContrast: p.contrast,
+          uHoverStrength: p.hoverStrength,
+          uSize: p.size,
+          uSoftness: p.softness,
+          uGlowSize: p.glowSize,
+          uHueSpeed: p.hueSpeed,
+          uHueSpread: p.hueSpread,
+          uSaturation: p.saturation,
           uGrain: p.grain,
           uGrainSize: p.grainSize,
-          uCol0: hexToRgb(p.col0),
-          uCol1: hexToRgb(p.col1),
-          uCol2: hexToRgb(p.col2),
-          uCol3: hexToRgb(p.col3),
+          uColBg: hexToRgb(p.colBg),
         }
       }
 
