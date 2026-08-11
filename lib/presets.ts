@@ -9,7 +9,9 @@ export interface AuraParams {
   breathSpeed: number
   gradient: number
   grain: number
+  grainSize: number
   hoverReact: boolean
+  hoverStrength: number
   colCore: string
   colMid: string
   colEdge: string
@@ -23,6 +25,7 @@ export interface FieldParams {
   speed: number
   bands: number
   grain: number
+  grainSize: number
   hoverReact: boolean
   col0: string
   col1: string
@@ -72,7 +75,9 @@ export const AURA_DEFAULT: AuraParams = {
   breathSpeed: 0.5,
   gradient: 0.6,
   grain: 0.06,
+  grainSize: 2.2,
   hoverReact: true,
+  hoverStrength: 0.3,
   ...AURA_PALETTES[0],
 }
 
@@ -83,6 +88,7 @@ export const FIELD_DEFAULT: FieldParams = {
   speed: 0.08,
   bands: 0,
   grain: 0.05,
+  grainSize: 2.2,
   hoverReact: true,
   ...FIELD_PALETTES[0],
 }
@@ -108,6 +114,8 @@ export function randomizeAura(current: AuraParams): AuraParams {
     breathSpeed: rand(0.2, 1),
     gradient: rand(0.2, 1),
     grain: rand(0, 0.1),
+    grainSize: rand(1.4, 4),
+    hoverStrength: rand(0.15, 0.6),
   }
 }
 
@@ -122,6 +130,7 @@ export function randomizeField(current: FieldParams): FieldParams {
     speed: rand(0.02, 0.28),
     bands: Math.random() < 0.35 ? Math.round(rand(3, 14)) : 0,
     grain: rand(0, 0.1),
+    grainSize: rand(1.4, 4),
   }
 }
 

@@ -92,10 +92,12 @@ export function ControlPanel({ kind, aura, field, setAura, setField }: ControlPa
           <Slider label="Breathing speed" value={aura.breathSpeed} min={0.1} max={1.2} onChange={(v) => setAura({ ...aura, breathSpeed: v })} />
           <Slider label="Gradient drift" value={aura.gradient} min={0} max={1} onChange={(v) => setAura({ ...aura, gradient: v })} />
           <Toggle label="React to hover" checked={aura.hoverReact} onChange={(v) => setAura({ ...aura, hoverReact: v })} />
+          <Slider label="Hover intensity" value={aura.hoverStrength} min={0} max={1} onChange={(v) => setAura({ ...aura, hoverStrength: v })} />
         </Section>
 
         <Section title="Texture">
           <Slider label="Grain" value={aura.grain} min={0} max={0.16} onChange={(v) => setAura({ ...aura, grain: v })} />
+          <Slider label="Grain size" value={aura.grainSize} min={1} max={6} step={0.1} onChange={(v) => setAura({ ...aura, grainSize: v })} />
         </Section>
       </div>
     )
@@ -145,6 +147,7 @@ export function ControlPanel({ kind, aura, field, setAura, setField }: ControlPa
 
       <Section title="Texture">
         <Slider label="Grain" value={field.grain} min={0} max={0.16} onChange={(v) => setField({ ...field, grain: v })} />
+        <Slider label="Grain size" value={field.grainSize} min={1} max={6} step={0.1} onChange={(v) => setField({ ...field, grainSize: v })} />
       </Section>
     </div>
   )

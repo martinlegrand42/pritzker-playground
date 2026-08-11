@@ -92,6 +92,8 @@ uniform float uBreathSpeed;
 uniform float uSoftness;    // rim / halo softness
 uniform float uGradient;    // how much the gradient bands drift out of sync
 uniform float uGrain;       // grain amount
+uniform float uGrainSize;   // grain cell size, in device pixels
+uniform float uHoverStrength; // how much the cursor magnifies nearby wobble
 uniform vec3  uColCore;
 uniform vec3  uColMid;
 uniform vec3  uColEdge;
@@ -102,9 +104,7 @@ ${NOISE}
 void main(){
   vec2 uv = (gl_FragCoord.xy - 0.5 * uResolution) / min(uResolution.x, uResolution.y);
 
-  // pointer pulls the whole mark very gently
-  vec2 center = uMouse * 0.06 * uHover;
-  vec2 d = uv - center;
+  vec2 d = uv;
   float rr = length(d);
   float ang = atan(d.y, d.x);
 
@@ -112,8 +112,13 @@ void main(){
   float wob = uWobble * snoise(vec3(cos(ang), sin(ang), uTime * uWobbleSpeed * 0.5));
   wob += uWobble * 0.4 * snoise(vec3(cos(ang) * 2.3, sin(ang) * 2.3, uTime * uWobbleSpeed * 0.9 + 10.0));
 
-  // hover makes it wobble more energetically
-  wob += uHover * 0.07 * snoise(vec3(cos(ang) * 3.0, sin(ang) * 3.0, uTime * 2.0));
+  // the cursor magnifies the existing wobble locally, on whichever side of
+  // the mark it's nearest to — not a global effect, and gentle by default.
+  float mouseAng = atan(uMouse.y, uMouse.x);
+  float angAlign = max(0.0, cos(ang - mouseAng));
+  float proximity = 1.0 - smoothstep(0.0, uSize * 2.4, length(uMouse));
+  float magnify = uHover * uHoverStrength * angAlign * angAlign * proximity;
+  wob *= 1.0 + magnify * 3.0;
 
   // slow breathing (scale in / out)
   float breath = 1.0 + uBreath * sin(uTime * uBreathSpeed);
@@ -137,8 +142,10 @@ void main(){
   vec3 outCol = mix(uColBg, col, mask);
   outCol = mix(outCol, mix(uColBg, uColEdge, 0.6), halo * (1.0 - mask) * 0.5);
 
-  // grain dither
-  float gr = grain(gl_FragCoord.xy, uTime * 55.0);
+  // grain dither, sampled per cell (not per pixel) so it reads as soft
+  // clumped grain instead of single-pixel static
+  vec2 grainCell = floor(gl_FragCoord.xy / max(uGrainSize, 1.0));
+  float gr = grain(grainCell, uTime * 20.0);
   outCol += (gr - 0.5) * uGrain;
 
   gl_FragColor = vec4(outCol, 1.0);
@@ -163,6 +170,7 @@ uniform float uSpeed;       // flow speed
 uniform float uBands;       // thermal contour count (0 = smooth)
 uniform float uContrast;
 uniform float uGrain;
+uniform float uGrainSize;
 uniform vec3  uCol0;
 uniform vec3  uCol1;
 uniform vec3  uCol2;
@@ -209,7 +217,8 @@ void main(){
 
   vec3 col = palette(v);
 
-  float gr = grain(gl_FragCoord.xy, uTime * 55.0);
+  vec2 grainCell = floor(gl_FragCoord.xy / max(uGrainSize, 1.0));
+  float gr = grain(grainCell, uTime * 20.0);
   col += (gr - 0.5) * uGrain;
 
   gl_FragColor = vec4(col, 1.0);

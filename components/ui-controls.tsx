@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
 
 export function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -80,6 +81,10 @@ export function Toggle({
   )
 }
 
+// A swatch (native picker, for quick browsing) paired with a hex text field
+// that is the actual source of truth — typing/pasting a hex code is always
+// the primary way to set an exact value, never just whatever RGB UI the
+// browser's native color input happens to default to.
 export function ColorField({
   label,
   value,
@@ -89,20 +94,49 @@ export function ColorField({
   value: string
   onChange: (value: string) => void
 }) {
+  const [text, setText] = useState(value)
+  // Reset the draft text whenever the prop changes from outside (palette
+  // click, Reset, Generate) — done during render, per React's guidance for
+  // adjusting state from props, rather than in a setState-in-effect.
+  const [prevValue, setPrevValue] = useState(value)
+  if (value !== prevValue) {
+    setPrevValue(value)
+    setText(value)
+  }
+
+  const commit = (raw: string) => {
+    const cleaned = raw.trim().replace(/^#/, '')
+    if (/^[0-9a-f]{6}$/i.test(cleaned)) {
+      onChange(`#${cleaned.toLowerCase()}`)
+    }
+  }
+
   return (
     <label className="flex items-center justify-between gap-3 text-xs text-foreground">
       <span>{label}</span>
       <span className="flex items-center gap-2">
-        <span className="relative h-6 w-6 overflow-hidden rounded-full border border-border">
+        <span className="relative h-6 w-6 shrink-0 overflow-hidden rounded-full border border-border">
           <input
             type="color"
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            aria-label={label}
+            aria-label={`${label} color swatch`}
             className="absolute -left-1 -top-1 h-8 w-8 cursor-pointer border-none bg-transparent p-0"
           />
         </span>
-        <span className="font-mono text-[11px] text-muted-foreground">{value}</span>
+        <input
+          type="text"
+          value={text}
+          spellCheck={false}
+          maxLength={7}
+          onChange={(e) => {
+            setText(e.target.value)
+            commit(e.target.value)
+          }}
+          onBlur={() => setText(value)}
+          aria-label={`${label} hex value`}
+          className="w-20 rounded border border-border bg-transparent px-1.5 py-1 font-mono text-[11px] uppercase text-muted-foreground focus:border-primary focus:text-foreground focus:outline-none"
+        />
       </span>
     </label>
   )
