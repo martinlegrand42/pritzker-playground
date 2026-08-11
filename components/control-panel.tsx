@@ -126,6 +126,7 @@ export function ControlPanel({ kind, aura, prism, setAura, setPrism }: ControlPa
         <Slider label="Hue speed" value={prism.hueSpeed} min={0.01} max={0.3} onChange={(v) => setPrism({ ...prism, hueSpeed: v })} />
         <Slider label="Hue spread" value={prism.hueSpread} min={0} max={1.5} onChange={(v) => setPrism({ ...prism, hueSpread: v })} />
         <Slider label="Saturation" value={prism.saturation} min={0.3} max={1} onChange={(v) => setPrism({ ...prism, saturation: v })} />
+        <Slider label="Chromatic aberration" value={prism.chroma} min={0} max={1} onChange={(v) => setPrism({ ...prism, chroma: v })} />
       </Section>
 
       <Section title="Motion">

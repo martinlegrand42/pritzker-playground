@@ -56,9 +56,11 @@ float snoise(vec3 v){
   return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
 }
 
-// Cheap animated film grain — used to dither the gradient and kill banding.
-float grain(vec2 co, float t){
-  return fract(sin(dot(co + t, vec2(12.9898, 78.233))) * 43758.5453);
+// Cheap film grain — a fixed dither pattern (per grain cell) used to kill
+// gradient banding. Deliberately not time-varying: it must read as a still
+// texture, not flicker.
+float grain(vec2 co){
+  return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
 }
 `
 
@@ -96,17 +98,17 @@ void main(){
   float rr = length(d);
   float ang = atan(d.y, d.x);
 
-  // organic rim wobble (two octaves) — never a perfect circle
+  // one gentle, low-frequency octave — just enough to feel slightly
+  // imperfect and round, never sharp or faceted
   float wob = uWobble * snoise(vec3(cos(ang), sin(ang), uTime * uWobbleSpeed * 0.5));
-  wob += uWobble * 0.4 * snoise(vec3(cos(ang) * 2.3, sin(ang) * 2.3, uTime * uWobbleSpeed * 0.9 + 10.0));
 
-  // the cursor magnifies the existing wobble locally, on whichever side of
-  // the mark it's nearest to — not a global effect, and gentle by default.
+  // on hover, a single smooth lobe of liquid gathers toward the cursor —
+  // rounded like a lava-lamp blob, not a spike, and added rather than
+  // multiplied so it never sharpens the ambient wobble
   float mouseAng = atan(uMouse.y, uMouse.x);
-  float angAlign = max(0.0, cos(ang - mouseAng));
+  float lobe = exp(-(1.0 - cos(ang - mouseAng)) * 2.2);
   float proximity = 1.0 - smoothstep(0.0, uSize * 2.4, length(uMouse));
-  float magnify = uHover * uHoverStrength * angAlign * angAlign * proximity;
-  wob *= 1.0 + magnify * 3.0;
+  wob += uHover * uHoverStrength * lobe * proximity * uSize * 1.6;
 
   // slow breathing (scale in / out)
   float breath = 1.0 + uBreath * sin(uTime * uBreathSpeed);
@@ -131,9 +133,9 @@ void main(){
   outCol = mix(outCol, mix(uColBg, uColEdge, 0.6), halo * (1.0 - mask) * 0.5);
 
   // grain dither, sampled per cell (not per pixel) so it reads as soft
-  // clumped grain instead of single-pixel static
+  // clumped grain instead of single-pixel static, and fixed in time
   vec2 grainCell = floor(gl_FragCoord.xy / max(uGrainSize, 1.0));
-  float gr = grain(grainCell, uTime * 20.0);
+  float gr = grain(grainCell);
   outCol += (gr - 0.5) * uGrain;
 
   gl_FragColor = vec4(outCol, 1.0);
@@ -159,6 +161,7 @@ uniform float uGlowSize;      // radius of the central highlight
 uniform float uHueSpeed;      // hue rotation speed
 uniform float uHueSpread;     // how much hue varies spatially across the disc
 uniform float uSaturation;
+uniform float uChroma;        // chromatic aberration: RGB split near the rim
 uniform float uGrain;
 uniform float uGrainSize;
 uniform vec3  uColBg;
@@ -171,6 +174,18 @@ vec3 hsv2rgb(vec3 c){
   return c.z * mix(vec3(1.0), rgb, c.y);
 }
 
+// Hue + limb-darkening at a given point, sampled per-channel below with a
+// tiny radial offset to fake chromatic aberration (a real prism's dispersion).
+vec3 discColor(vec2 p){
+  float rr = length(p);
+  float ang = atan(p.y, p.x);
+  float t = rr / max(uSize, 0.0001);
+  float hue = fract(uTime * uHueSpeed + p.y * uHueSpread * 0.5 + sin(ang) * uHueSpread * 0.12);
+  vec3 col = hsv2rgb(vec3(hue, uSaturation, 1.0));
+  col *= mix(1.0, 0.55, smoothstep(0.0, 1.0, t));
+  return col;
+}
+
 void main(){
   vec2 uv = (gl_FragCoord.xy - 0.5 * uResolution) / min(uResolution.x, uResolution.y);
 
@@ -179,13 +194,15 @@ void main(){
   float t = rr / max(uSize, 0.0001);
   float mask = 1.0 - smoothstep(1.0 - uSoftness, 1.0 + uSoftness, t);
 
-  // hue rotates continuously over time, with a little spatial banding so
-  // it's not a single flat color at any instant
-  float hue = fract(uTime * uHueSpeed + uv.y * uHueSpread * 0.5 + sin(ang) * uHueSpread * 0.12);
-  vec3 col = hsv2rgb(vec3(hue, uSaturation, 1.0));
-
-  // limb darkening toward the rim, like a lit sphere
-  col *= mix(1.0, 0.55, smoothstep(0.0, 1.0, t));
+  // chromatic aberration: split the red/blue channels outward/inward along
+  // the radius, growing toward the rim like light dispersing through glass
+  vec2 dir = rr > 0.0001 ? uv / rr : vec2(0.0);
+  float ca = uChroma * 0.05 * t;
+  vec3 col = vec3(
+    discColor(uv + dir * ca).r,
+    discColor(uv).g,
+    discColor(uv - dir * ca).b
+  );
 
   // the highlight nudges toward the cursor on hover — gently, it never
   // travels all the way to the pointer
@@ -196,7 +213,7 @@ void main(){
   vec3 outCol = mix(uColBg, col, mask);
 
   vec2 grainCell = floor(gl_FragCoord.xy / max(uGrainSize, 1.0));
-  float gr = grain(grainCell, uTime * 20.0);
+  float gr = grain(grainCell);
   outCol += (gr - 0.5) * uGrain;
 
   gl_FragColor = vec4(outCol, 1.0);

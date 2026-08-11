@@ -25,6 +25,7 @@ export interface PrismParams {
   hueSpeed: number
   hueSpread: number
   saturation: number
+  chroma: number
   grain: number
   grainSize: number
   hoverReact: boolean
@@ -74,6 +75,7 @@ export const PRISM_DEFAULT: PrismParams = {
   hueSpeed: 0.05,
   hueSpread: 0.6,
   saturation: 0.75,
+  chroma: 0.35,
   grain: 0.05,
   grainSize: 2.2,
   hoverReact: true,
@@ -118,6 +120,7 @@ export function randomizePrism(current: PrismParams): PrismParams {
     hueSpeed: rand(0.02, 0.16),
     hueSpread: rand(0.2, 1.2),
     saturation: rand(0.5, 0.95),
+    chroma: rand(0.1, 0.7),
     grain: rand(0, 0.1),
     grainSize: rand(1.4, 4),
     hoverStrength: rand(0.15, 0.6),

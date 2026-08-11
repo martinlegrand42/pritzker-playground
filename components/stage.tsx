@@ -108,6 +108,7 @@ export function Stage({ kind, aura, prism, canvasRef, onError }: StageProps) {
           uHueSpeed: p.hueSpeed,
           uHueSpread: p.hueSpread,
           uSaturation: p.saturation,
+          uChroma: p.chroma,
           uGrain: p.grain,
           uGrainSize: p.grainSize,
           uColBg: hexToRgb(p.colBg),

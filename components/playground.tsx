@@ -6,6 +6,7 @@ import { Stage } from './stage'
 import { ControlPanel } from './control-panel'
 import { cn } from '@/lib/utils'
 import { exportPng, recordLoop, downloadVideo } from '@/lib/export'
+import { loadPersisted, savePersisted } from '@/lib/persist'
 import {
   AURA_DEFAULT,
   PRISM_DEFAULT,
@@ -30,11 +31,23 @@ const ENGINES: { id: EngineKind; label: string; sub: string }[] = [
   { id: 'prism', label: 'Prism', sub: 'The spectrum' },
 ]
 
+const STORAGE_KEY = 'pritzker-identity-studio:v1'
+
+interface PersistedState {
+  kind: EngineKind
+  aspect: Aspect
+  aura: AuraParams
+  prism: PrismParams
+}
+
 export function Playground() {
-  const [kind, setKind] = useState<EngineKind>('aura')
-  const [aura, setAura] = useState<AuraParams>(AURA_DEFAULT)
-  const [prism, setPrism] = useState<PrismParams>(PRISM_DEFAULT)
-  const [aspect, setAspect] = useState<Aspect>('fill')
+  // SSR/first paint always uses these defaults, matching the static
+  // prerender exactly — no hydration mismatch. A mount-only effect below
+  // then corrects from localStorage if there's a saved look.
+  const [kind, setKindState] = useState<EngineKind>('aura')
+  const [aura, setAuraState] = useState<AuraParams>(AURA_DEFAULT)
+  const [prism, setPrismState] = useState<PrismParams>(PRISM_DEFAULT)
+  const [aspect, setAspectState] = useState<Aspect>('fill')
   const [error, setError] = useState<string | null>(null)
 
   const [recording, setRecording] = useState(false)
@@ -43,6 +56,46 @@ export function Playground() {
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const recordHandle = useRef<{ stop: () => void } | null>(null)
+
+  // Load any saved look once, after mount (client-only, so it can't create
+  // a hydration mismatch). This uses the raw setters, not the persisting
+  // wrappers below — hydrating shouldn't itself trigger a write.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    const saved = loadPersisted<PersistedState>(STORAGE_KEY)
+    if (!saved) return
+    if (saved.kind === 'aura' || saved.kind === 'prism') setKindState(saved.kind)
+    if (saved.aspect && ASPECTS.some((a) => a.id === saved.aspect)) setAspectState(saved.aspect)
+    if (saved.aura) setAuraState((p) => ({ ...p, ...saved.aura }))
+    if (saved.prism) setPrismState((p) => ({ ...p, ...saved.prism }))
+  }, [])
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // Every user-driven change persists immediately, using the value it just
+  // computed rather than whatever's in the outer closure — so this can
+  // never race with (or be raced by) the load effect above.
+  const setKind = (next: EngineKind) => {
+    setKindState(next)
+    savePersisted<PersistedState>(STORAGE_KEY, { kind: next, aspect, aura, prism })
+  }
+  const setAspect = (next: Aspect) => {
+    setAspectState(next)
+    savePersisted<PersistedState>(STORAGE_KEY, { kind, aspect: next, aura, prism })
+  }
+  const setAura = (updater: AuraParams | ((p: AuraParams) => AuraParams)) => {
+    setAuraState((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater
+      savePersisted<PersistedState>(STORAGE_KEY, { kind, aspect, aura: next, prism })
+      return next
+    })
+  }
+  const setPrism = (updater: PrismParams | ((p: PrismParams) => PrismParams)) => {
+    setPrismState((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater
+      savePersisted<PersistedState>(STORAGE_KEY, { kind, aspect, aura, prism: next })
+      return next
+    })
+  }
 
   useEffect(() => {
     if (!toast) return
