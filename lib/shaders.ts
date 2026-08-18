@@ -152,9 +152,14 @@ void main(){
   // of wobbling independently
   float rrEff = rr - wob;
 
+  // the edge circle gets a bit less blur than core/mid so its own color
+  // reads as a clearer band before fading into the background, instead of
+  // dissolving at the same rate as everything else
+  float edgeBlur = blur * 0.6;
+
   float coreA = 1.0 - smoothstep(coreR - blur, coreR + blur, rrEff);
   float midA = 1.0 - smoothstep(midR - blur, midR + blur, rrEff);
-  float edgeA = 1.0 - smoothstep(edgeR - blur, edgeR + blur, rrEff);
+  float edgeA = 1.0 - smoothstep(edgeR - edgeBlur, edgeR + edgeBlur, rrEff);
 
   vec3 col = mix(uColBg, uColEdge, edgeA);
   vec3 midNormal = mix(col, uColMid, midA);
