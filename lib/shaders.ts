@@ -110,11 +110,13 @@ void main(){
   float mouseAng = atan(uMouse.y, uMouse.x);
   float lobe = exp(-(1.0 - cos(ang - mouseAng)) * 2.2);
   float proximity = 1.0 - smoothstep(0.0, uSize * 2.4, mouseDist);
-  // the cursor's angle is undefined right at the center — atan2 swings
-  // wildly there, which reads as the lobe jumping when crossing an axis
-  // near the middle. Fade the whole directional effect out before that
-  // instability kicks in, so it settles rather than flickering.
-  float centerFade = smoothstep(0.0, uSize * 0.4, mouseDist);
+  // the cursor's angle gets touchy the closer it is to the center — not
+  // just exactly at it, but across the whole middle of the shape, since a
+  // small move near the middle swings the angle far more than the same
+  // move would near the rim. So this isn't a point to dodge, it's a zone:
+  // no directional effect anywhere in the middle, only once the cursor is
+  // actually over the rim/sides.
+  float centerFade = smoothstep(uSize * 0.55, uSize * 0.95, mouseDist);
   wob += uHover * uHoverStrength * lobe * proximity * centerFade * uSize * 1.6;
 
   // slow breathing (scale in / out)
