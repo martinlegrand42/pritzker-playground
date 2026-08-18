@@ -98,9 +98,10 @@ void main(){
   float rr = length(d);
   float ang = atan(d.y, d.x);
 
-  // one gentle, low-frequency octave — just enough to feel slightly
-  // imperfect and round, never sharp or faceted
-  float wob = uWobble * snoise(vec3(cos(ang), sin(ang), uTime * uWobbleSpeed * 0.5));
+  // one gentle, very-low-frequency octave — sampled from a small patch of
+  // the noise field (not a full unit circle around it) so at most one soft
+  // lean shows up per revolution, never multiple lobes or a faceted edge
+  float wob = uWobble * snoise(vec3(cos(ang) * 0.35, sin(ang) * 0.35, uTime * uWobbleSpeed * 0.5));
 
   // on hover, a single smooth lobe of liquid gathers toward the cursor —
   // rounded like a lava-lamp blob, not a spike, and added rather than
