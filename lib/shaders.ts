@@ -144,7 +144,10 @@ void main(){
   float breathAmt = uBreath / 0.08; // 1.0 reproduces the given keyframes exactly
   float coreR = uSize * mix(0.445, 0.615, phi * breathAmt);
   float midR = uSize * mix(0.572, 0.779, phi * breathAmt) * (1.0 + g1 * 0.04);
-  float edgeR = uSize * (1.0 + g2 * 0.02);
+  // edge grows along with the breathing zoom-in too — more than the Figma
+  // keyframes alone call for — so more of its own color shows once core
+  // and mid expand into it, instead of staying essentially the same size
+  float edgeR = uSize * mix(1.0, 1.12, phi * breathAmt) * (1.0 + g2 * 0.02);
   float blur = uSize * 0.516 * (uSoftness / 0.4);
 
   // same ambient + hover wobble as before, shifting the shared distance
