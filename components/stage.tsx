@@ -24,11 +24,17 @@ export function Stage({ aura, canvasRef, onError }: StageProps) {
   const pointerRef = useRef<[number, number]>([0.5, 0.5])
   const hoverRef = useRef(0)
   const hoverTargetRef = useRef(0)
-  // The raw cursor position jumps a lot between frames when moved quickly;
-  // feeding that straight into the angle math made the liquid lobe's
-  // direction snap around instead of following smoothly. Ease the position
-  // itself, the same way hover intensity already eases.
-  const smoothMouseRef = useRef<[number, number]>([0, 0])
+  // Easing raw x/y still lets the lobe's angle snap: a smooth path that
+  // happens to pass near the shape's center sweeps through a huge angle in
+  // a couple of frames, since angle is unstable near the origin no matter
+  // how gently position gets there. So angle and distance are eased
+  // separately — distance with a plain ease, angle with its own ease PLUS
+  // a hard cap on how far it can turn in one frame (through the shortest
+  // direction), and it's simply not updated at all while the cursor is too
+  // close to the center to have a meaningful direction. That guarantees
+  // the lobe can never snap, regardless of how fast the cursor moves.
+  const smoothAngleRef = useRef(0)
+  const smoothDistRef = useRef(0)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -71,13 +77,29 @@ export function Stage({ aura, canvasRef, onError }: StageProps) {
       const minWH = Math.min(w, h) || 1
       const mx = ((pu - 0.5) * w) / minWH
       const my = ((pv - 0.5) * h) / minWH
-      smoothMouseRef.current[0] += (mx - smoothMouseRef.current[0]) * 0.15
-      smoothMouseRef.current[1] += (my - smoothMouseRef.current[1]) * 0.15
+      const rawDist = Math.hypot(mx, my)
+
+      smoothDistRef.current += (rawDist - smoothDistRef.current) * 0.15
+
+      // only chase a new angle once the cursor is far enough from center for
+      // that angle to mean anything — otherwise hold the last stable one
+      if (rawDist > 0.02) {
+        const rawAngle = Math.atan2(my, mx)
+        let diff = rawAngle - smoothAngleRef.current
+        diff = ((diff + Math.PI) % (2 * Math.PI)) - Math.PI // shortest direction, wrapped to [-pi, pi]
+        const maxStep = 0.12 // radians/frame cap — the hard guarantee against snapping
+        smoothAngleRef.current += Math.max(-maxStep, Math.min(maxStep, diff * 0.2))
+      }
+
+      const smoothMouse: [number, number] = [
+        Math.cos(smoothAngleRef.current) * smoothDistRef.current,
+        Math.sin(smoothAngleRef.current) * smoothDistRef.current,
+      ]
 
       const p = auraRef.current
       const uniforms: Uniforms = {
         uTime: time,
-        uMouse: smoothMouseRef.current,
+        uMouse: smoothMouse,
         uHover: p.hoverReact ? hover : 0,
         uSize: p.size,
         uWobble: p.wobble,
