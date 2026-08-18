@@ -4,26 +4,31 @@ A generative playground for experimenting with brand motion. Tune a live WebGL
 shader with bounded controls, then export a still (PNG) or a looping clip
 (WebM) — no code editing, so there's no way to break it.
 
-## Engines
+## Aura
 
-- **Aura** — a single breathing, gently imperfect circle. Rim distortion is
-  one low-frequency simplex-noise octave, kept subtle enough to stay
-  circular rather than faceted. Hovering gathers a smooth, rounded lobe of
-  "liquid" toward the cursor — additive, not a spike — tunable via a
-  dedicated hover-intensity slider.
-- **Prism** — a divergent take: a perfect disc that cycles continuously
-  through the full hue spectrum instead of sitting on a fixed brand palette,
-  with a soft center highlight that drifts gently toward the cursor on
-  hover, and a chromatic-aberration slider that splits the red/blue
-  channels apart near the rim like light through glass.
+A single breathing, gently imperfect circle, rendered by a hand-written
+GLSL fragment shader (`lib/shaders.ts`, run through `lib/shader-runtime.ts`).
 
-Both run on the same fragment-shader runtime (`lib/shader-runtime.ts`),
-share a control panel (palette, per-engine sliders, "Generate" for a random
-variation, "Reset" back to defaults), and persist their settings to
-`localStorage` (`lib/persist.ts`) so a custom look survives a reload. Grain
-is a fixed per-cell dither (`lib/shaders.ts`'s `grain()`), deliberately not
-animated — it's texture, not flicker. An export toolbar (PNG still / 6s
-WebM loop via `canvas.captureStream` + `MediaRecorder`) rounds both out.
+- Rim distortion is one low-frequency simplex-noise octave, sampled from a
+  small patch of the noise field so it stays circular rather than faceted.
+- Hovering the sides/rim gathers a smooth, rounded lobe of "liquid" toward
+  the cursor — additive, not a spike — tunable via a hover-intensity slider.
+  The middle of the shape is a deliberate dead zone: a cursor's angle
+  relative to the center is numerically unstable near the center itself, so
+  the directional effect only activates once the cursor is actually near
+  the rim.
+- The "mid" palette color blends in via a real Color Burn (the CSS
+  Compositing / Figma / Photoshop formula), evaluated at full strength and
+  masked into a soft band partway out — not linearly cross-faded, which
+  would just average it toward a paler in-between tone.
+- Grain is a fixed per-cell dither (`grain()`), deliberately not
+  time-varying — it's texture, not flicker.
+
+Settings (palette, sliders, toggles) persist to `localStorage`
+(`lib/persist.ts`) so a custom look survives a reload. Controls include
+"Generate" for a random variation and "Reset" back to defaults, plus an
+export toolbar (PNG still / 6s WebM loop via `canvas.captureStream` +
+`MediaRecorder`).
 
 ## Getting started
 

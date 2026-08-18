@@ -1,5 +1,3 @@
-export type EngineKind = 'aura' | 'prism'
-
 export interface AuraParams {
   size: number
   softness: number
@@ -12,24 +10,10 @@ export interface AuraParams {
   grainSize: number
   hoverReact: boolean
   hoverStrength: number
+  midBurn: boolean
   colCore: string
   colMid: string
   colEdge: string
-  colBg: string
-}
-
-export interface PrismParams {
-  size: number
-  softness: number
-  glowSize: number
-  hueSpeed: number
-  hueSpread: number
-  saturation: number
-  chroma: number
-  grain: number
-  grainSize: number
-  hoverReact: boolean
-  hoverStrength: number
   colBg: string
 }
 
@@ -49,10 +33,6 @@ export const AURA_PALETTES: AuraPalette[] = [
   { name: 'Orchid', colCore: '#fbe6ff', colMid: '#c060e0', colEdge: '#4a1060', colBg: '#0a020c' },
 ]
 
-// Prism's disc cycles through the full hue wheel on its own, so it doesn't
-// take a brand palette — just a backdrop, reusing the same four grounds.
-export const PRISM_BACKGROUNDS = AURA_PALETTES.map(({ name, colBg }) => ({ name, colBg }))
-
 export const AURA_DEFAULT: AuraParams = {
   size: 0.34,
   softness: 0.35,
@@ -65,22 +45,8 @@ export const AURA_DEFAULT: AuraParams = {
   grainSize: 2.2,
   hoverReact: true,
   hoverStrength: 0.3,
+  midBurn: true,
   ...AURA_PALETTES[0],
-}
-
-export const PRISM_DEFAULT: PrismParams = {
-  size: 0.38,
-  softness: 0.04,
-  glowSize: 0.25,
-  hueSpeed: 0.05,
-  hueSpread: 0.6,
-  saturation: 0.75,
-  chroma: 0.35,
-  grain: 0.05,
-  grainSize: 2.2,
-  hoverReact: true,
-  hoverStrength: 0.35,
-  colBg: PRISM_BACKGROUNDS[0].colBg,
 }
 
 function rand(min: number, max: number) {
@@ -103,24 +69,6 @@ export function randomizeAura(current: AuraParams): AuraParams {
     breath: rand(0.02, 0.16),
     breathSpeed: rand(0.2, 1),
     gradient: rand(0.2, 1),
-    grain: rand(0, 0.1),
-    grainSize: rand(1.4, 4),
-    hoverStrength: rand(0.15, 0.6),
-  }
-}
-
-export function randomizePrism(current: PrismParams): PrismParams {
-  const { colBg } = randPalette(PRISM_BACKGROUNDS)
-  return {
-    ...current,
-    colBg,
-    size: rand(0.28, 0.48),
-    softness: rand(0.02, 0.12),
-    glowSize: rand(0.14, 0.4),
-    hueSpeed: rand(0.02, 0.16),
-    hueSpread: rand(0.2, 1.2),
-    saturation: rand(0.5, 0.95),
-    chroma: rand(0.1, 0.7),
     grain: rand(0, 0.1),
     grainSize: rand(1.4, 4),
     hoverStrength: rand(0.15, 0.6),

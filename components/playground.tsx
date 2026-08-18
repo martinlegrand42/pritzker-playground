@@ -7,15 +7,7 @@ import { ControlPanel } from './control-panel'
 import { cn } from '@/lib/utils'
 import { exportPng, recordLoop, downloadVideo } from '@/lib/export'
 import { loadPersisted, savePersisted } from '@/lib/persist'
-import {
-  AURA_DEFAULT,
-  PRISM_DEFAULT,
-  randomizeAura,
-  randomizePrism,
-  type AuraParams,
-  type PrismParams,
-  type EngineKind,
-} from '@/lib/presets'
+import { AURA_DEFAULT, randomizeAura, type AuraParams } from '@/lib/presets'
 
 type Aspect = 'square' | 'wide' | 'portrait' | 'fill'
 
@@ -26,27 +18,18 @@ const ASPECTS: { id: Aspect; label: string; ratio?: number }[] = [
   { id: 'portrait', label: '4:5', ratio: 4 / 5 },
 ]
 
-const ENGINES: { id: EngineKind; label: string; sub: string }[] = [
-  { id: 'aura', label: 'Aura', sub: 'The mark' },
-  { id: 'prism', label: 'Prism', sub: 'The spectrum' },
-]
-
 const STORAGE_KEY = 'pritzker-identity-studio:v1'
 
 interface PersistedState {
-  kind: EngineKind
   aspect: Aspect
   aura: AuraParams
-  prism: PrismParams
 }
 
 export function Playground() {
   // SSR/first paint always uses these defaults, matching the static
   // prerender exactly — no hydration mismatch. A mount-only effect below
   // then corrects from localStorage if there's a saved look.
-  const [kind, setKindState] = useState<EngineKind>('aura')
   const [aura, setAuraState] = useState<AuraParams>(AURA_DEFAULT)
-  const [prism, setPrismState] = useState<PrismParams>(PRISM_DEFAULT)
   const [aspect, setAspectState] = useState<Aspect>('fill')
   const [error, setError] = useState<string | null>(null)
 
@@ -64,35 +47,22 @@ export function Playground() {
   useEffect(() => {
     const saved = loadPersisted<PersistedState>(STORAGE_KEY)
     if (!saved) return
-    if (saved.kind === 'aura' || saved.kind === 'prism') setKindState(saved.kind)
     if (saved.aspect && ASPECTS.some((a) => a.id === saved.aspect)) setAspectState(saved.aspect)
     if (saved.aura) setAuraState((p) => ({ ...p, ...saved.aura }))
-    if (saved.prism) setPrismState((p) => ({ ...p, ...saved.prism }))
   }, [])
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // Every user-driven change persists immediately, using the value it just
   // computed rather than whatever's in the outer closure — so this can
   // never race with (or be raced by) the load effect above.
-  const setKind = (next: EngineKind) => {
-    setKindState(next)
-    savePersisted<PersistedState>(STORAGE_KEY, { kind: next, aspect, aura, prism })
-  }
   const setAspect = (next: Aspect) => {
     setAspectState(next)
-    savePersisted<PersistedState>(STORAGE_KEY, { kind, aspect: next, aura, prism })
+    savePersisted<PersistedState>(STORAGE_KEY, { aspect: next, aura })
   }
   const setAura = (updater: AuraParams | ((p: AuraParams) => AuraParams)) => {
     setAuraState((prev) => {
       const next = typeof updater === 'function' ? updater(prev) : updater
-      savePersisted<PersistedState>(STORAGE_KEY, { kind, aspect, aura: next, prism })
-      return next
-    })
-  }
-  const setPrism = (updater: PrismParams | ((p: PrismParams) => PrismParams)) => {
-    setPrismState((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater
-      savePersisted<PersistedState>(STORAGE_KEY, { kind, aspect, aura, prism: next })
+      savePersisted<PersistedState>(STORAGE_KEY, { aspect, aura: next })
       return next
     })
   }
@@ -105,20 +75,13 @@ export function Playground() {
 
   const activeRatio = ASPECTS.find((a) => a.id === aspect)?.ratio
 
-  const handleRandomize = () => {
-    if (kind === 'aura') setAura((p) => randomizeAura(p))
-    else setPrism((p) => randomizePrism(p))
-  }
-
-  const handleReset = () => {
-    if (kind === 'aura') setAura(AURA_DEFAULT)
-    else setPrism(PRISM_DEFAULT)
-  }
+  const handleRandomize = () => setAura((p) => randomizeAura(p))
+  const handleReset = () => setAura(AURA_DEFAULT)
 
   const handleExportPng = () => {
     const canvas = canvasRef.current
     if (!canvas) return
-    exportPng(canvas, `pritzker-${kind}-${Date.now()}`)
+    exportPng(canvas, `pritzker-aura-${Date.now()}`)
     setToast('Still frame exported (.png)')
   }
 
@@ -138,7 +101,7 @@ export function Playground() {
           setToast('Video recording is not supported in this browser')
           return
         }
-        downloadVideo(url, `pritzker-${kind}-loop-${Date.now()}`)
+        downloadVideo(url, `pritzker-aura-loop-${Date.now()}`)
         setToast('6s loop exported (.webm)')
       },
     )
@@ -160,25 +123,6 @@ export function Playground() {
           </div>
         </div>
 
-        {/* Engine switch */}
-        <div className="hidden items-center rounded-full border border-border bg-card p-1 sm:flex">
-          {ENGINES.map((e) => (
-            <button
-              key={e.id}
-              type="button"
-              onClick={() => setKind(e.id)}
-              className={cn(
-                'rounded-full px-4 py-1.5 text-xs font-medium transition-colors',
-                kind === e.id
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {e.label}
-            </button>
-          ))}
-        </div>
-
         <div className="flex items-center gap-1.5">
           <ToolButton onClick={handleRandomize} icon={<Dices className="h-4 w-4" />} label="Generate" hideLabelOnMobile />
           <ToolButton onClick={handleReset} icon={<RotateCcw className="h-4 w-4" />} label="Reset" hideLabelOnMobile />
@@ -195,23 +139,6 @@ export function Playground() {
           </button>
         </div>
       </header>
-
-      {/* Mobile engine switch */}
-      <div className="flex items-center gap-1 border-b border-border p-2 sm:hidden">
-        {ENGINES.map((e) => (
-          <button
-            key={e.id}
-            type="button"
-            onClick={() => setKind(e.id)}
-            className={cn(
-              'flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
-              kind === e.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground',
-            )}
-          >
-            {e.label}
-          </button>
-        ))}
-      </div>
 
       {/* Body */}
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
@@ -243,7 +170,7 @@ export function Playground() {
                 : { width: '100%', height: '100%' }
             }
           >
-            <Stage kind={kind} aura={aura} prism={prism} canvasRef={canvasRef} onError={setError} />
+            <Stage aura={aura} canvasRef={canvasRef} onError={setError} />
             {error ? (
               <div className="absolute inset-0 flex items-center justify-center bg-secondary/95 p-6 text-center text-sm text-muted-foreground">
                 {error}
@@ -256,10 +183,8 @@ export function Playground() {
         <aside className="flex w-full shrink-0 flex-col border-t border-border bg-card lg:w-[344px] lg:border-l lg:border-t-0 lg:overflow-y-auto">
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
             <div>
-              <p className="text-sm font-semibold">{ENGINES.find((e) => e.id === kind)?.label}</p>
-              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                {ENGINES.find((e) => e.id === kind)?.sub}
-              </p>
+              <p className="text-sm font-semibold">Aura</p>
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">The mark</p>
             </div>
             <button
               type="button"
@@ -271,13 +196,12 @@ export function Playground() {
             </button>
           </div>
 
-          <ControlPanel kind={kind} aura={aura} prism={prism} setAura={setAura} setPrism={setPrism} />
+          <ControlPanel aura={aura} setAura={setAura} />
 
           <div className="mt-auto border-t border-border px-5 py-4">
             <p className="text-[11px] leading-relaxed text-muted-foreground">
-              {kind === 'aura'
-                ? 'A living mark that breathes and wobbles — never a perfect circle. Hover it, generate variations, then export a still or a 6-second loop.'
-                : 'A perfect disc cycling through the full spectrum, glowing brightest at its center. Hover it and the highlight drifts gently toward the cursor.'}
+              A living mark that breathes and wobbles — never a perfect circle. Hover it, generate
+              variations, then export a still or a 6-second loop.
             </p>
           </div>
         </aside>

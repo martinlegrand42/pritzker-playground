@@ -2,29 +2,23 @@
 
 import { useEffect, useRef } from 'react'
 import { createRenderer, ContextLostError, type Renderer, type Uniforms } from '@/lib/shader-runtime'
-import { AURA_FRAG, PRISM_FRAG } from '@/lib/shaders'
-import { hexToRgb, type AuraParams, type PrismParams, type EngineKind } from '@/lib/presets'
+import { AURA_FRAG } from '@/lib/shaders'
+import { hexToRgb, type AuraParams } from '@/lib/presets'
 
 interface StageProps {
-  kind: EngineKind
   aura: AuraParams
-  prism: PrismParams
   canvasRef: React.RefObject<HTMLCanvasElement | null>
   onError?: (message: string) => void
 }
 
-export function Stage({ kind, aura, prism, canvasRef, onError }: StageProps) {
-  // Keep latest params in refs so the render loop reads fresh values
+export function Stage({ aura, canvasRef, onError }: StageProps) {
+  // Keep latest params in a ref so the render loop reads fresh values
   // without tearing down WebGL on every slider change.
   const auraRef = useRef(aura)
-  const prismRef = useRef(prism)
-  const kindRef = useRef(kind)
   // Deliberate "latest ref" sync: written during render, only ever read
   // later from the rAF loop/event handlers below — never read here.
   /* eslint-disable react-hooks/refs */
   auraRef.current = aura
-  prismRef.current = prism
-  kindRef.current = kind
   /* eslint-enable react-hooks/refs */
 
   const pointerRef = useRef<[number, number]>([0.5, 0.5])
@@ -45,7 +39,7 @@ export function Stage({ kind, aura, prism, canvasRef, onError }: StageProps) {
     const init = (attempt: number) => {
       if (cancelled) return
       try {
-        renderer = createRenderer(canvas, kindRef.current === 'aura' ? AURA_FRAG : PRISM_FRAG)
+        renderer = createRenderer(canvas, AURA_FRAG)
         onError?.('')
         raf = requestAnimationFrame(frame)
       } catch (err) {
@@ -66,53 +60,33 @@ export function Stage({ kind, aura, prism, canvasRef, onError }: StageProps) {
       const hover = hoverRef.current
       const [pu, pv] = pointerRef.current
 
-      // aspect-corrected uv space, matching gl_FragCoord math in both shaders
+      // aspect-corrected uv space, matching gl_FragCoord math in the shader
       const w = canvas.width
       const h = canvas.height
       const minWH = Math.min(w, h) || 1
       const mx = ((pu - 0.5) * w) / minWH
       const my = ((pv - 0.5) * h) / minWH
 
-      let uniforms: Uniforms
-      if (kindRef.current === 'aura') {
-        const p = auraRef.current
-        uniforms = {
-          uTime: time,
-          uMouse: [mx, my],
-          uHover: p.hoverReact ? hover : 0,
-          uSize: p.size,
-          uWobble: p.wobble,
-          uWobbleSpeed: p.wobbleSpeed,
-          uBreath: p.breath,
-          uBreathSpeed: p.breathSpeed,
-          uSoftness: p.softness,
-          uGradient: p.gradient,
-          uGrain: p.grain,
-          uGrainSize: p.grainSize,
-          uHoverStrength: p.hoverStrength,
-          uColCore: hexToRgb(p.colCore),
-          uColMid: hexToRgb(p.colMid),
-          uColEdge: hexToRgb(p.colEdge),
-          uColBg: hexToRgb(p.colBg),
-        }
-      } else {
-        const p = prismRef.current
-        uniforms = {
-          uTime: time,
-          uMouse: [mx, my],
-          uHover: p.hoverReact ? hover : 0,
-          uHoverStrength: p.hoverStrength,
-          uSize: p.size,
-          uSoftness: p.softness,
-          uGlowSize: p.glowSize,
-          uHueSpeed: p.hueSpeed,
-          uHueSpread: p.hueSpread,
-          uSaturation: p.saturation,
-          uChroma: p.chroma,
-          uGrain: p.grain,
-          uGrainSize: p.grainSize,
-          uColBg: hexToRgb(p.colBg),
-        }
+      const p = auraRef.current
+      const uniforms: Uniforms = {
+        uTime: time,
+        uMouse: [mx, my],
+        uHover: p.hoverReact ? hover : 0,
+        uSize: p.size,
+        uWobble: p.wobble,
+        uWobbleSpeed: p.wobbleSpeed,
+        uBreath: p.breath,
+        uBreathSpeed: p.breathSpeed,
+        uSoftness: p.softness,
+        uGradient: p.gradient,
+        uGrain: p.grain,
+        uGrainSize: p.grainSize,
+        uHoverStrength: p.hoverStrength,
+        uMidBurn: p.midBurn ? 1 : 0,
+        uColCore: hexToRgb(p.colCore),
+        uColMid: hexToRgb(p.colMid),
+        uColEdge: hexToRgb(p.colEdge),
+        uColBg: hexToRgb(p.colBg),
       }
 
       if (renderer) renderer.render(uniforms)
@@ -144,9 +118,9 @@ export function Stage({ kind, aura, prism, canvasRef, onError }: StageProps) {
       if (retryTimer) clearTimeout(retryTimer)
       renderer?.destroy()
     }
-    // Recreate only when the engine (shader program) changes.
+    // Mount once — there's only one shader program now, nothing to recreate for.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind])
+  }, [])
 
   const updatePointer = (e: React.PointerEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
