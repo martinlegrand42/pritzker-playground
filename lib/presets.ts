@@ -28,17 +28,17 @@ interface AuraPalette {
 
 // Six brand palettes for Aura's center-out mix, all sharing the same role
 // structure matched to the studio's reference image: colCore is a rich,
-// saturated body color (no bright hotspot), colMid is a deeper accent
-// burned in as a soft interior band, colEdge is a light tint of the same
-// hue for the transitional ring, and colBg is a near-white ground that
-// the edge fades into.
+// saturated body color (no bright hotspot), colMid is a medium tone of the
+// same hue that sits between core and edge so it reads as its own visible
+// band, colEdge is a light tint for the transitional ring, and colBg is a
+// near-white ground that the edge fades into.
 export const AURA_PALETTES: AuraPalette[] = [
-  { name: 'Pritzker Blue', colCore: '#2438c9', colMid: '#182a9e', colEdge: '#aac6ff', colBg: '#f4f7fc' },
-  { name: 'Ember', colCore: '#d6491c', colMid: '#a83112', colEdge: '#ffcfa3', colBg: '#fdf6f0' },
-  { name: 'Verdant', colCore: '#17915a', colMid: '#0f6e42', colEdge: '#b9f0d3', colBg: '#f2fbf6' },
-  { name: 'Orchid', colCore: '#9a2bc4', colMid: '#711f92', colEdge: '#edc2ff', colBg: '#faf2fc' },
-  { name: 'Slate', colCore: '#445066', colMid: '#2c3547', colEdge: '#cdd6e3', colBg: '#f7f8fa' },
-  { name: 'Gold', colCore: '#c98a12', colMid: '#9c6708', colEdge: '#ffe7ad', colBg: '#fdfaf2' },
+  { name: 'Pritzker Blue', colCore: '#2438c9', colMid: '#5470e6', colEdge: '#aac6ff', colBg: '#f4f7fc' },
+  { name: 'Ember', colCore: '#d6491c', colMid: '#ea8c5f', colEdge: '#ffcfa3', colBg: '#fdf6f0' },
+  { name: 'Verdant', colCore: '#17915a', colMid: '#68c096', colEdge: '#b9f0d3', colBg: '#f2fbf6' },
+  { name: 'Orchid', colCore: '#9a2bc4', colMid: '#c376e1', colEdge: '#edc2ff', colBg: '#faf2fc' },
+  { name: 'Slate', colCore: '#445066', colMid: '#8893a4', colEdge: '#cdd6e3', colBg: '#f7f8fa' },
+  { name: 'Gold', colCore: '#c98a12', colMid: '#e4b85f', colEdge: '#ffe7ad', colBg: '#fdfaf2' },
 ]
 
 export const AURA_DEFAULT: AuraParams = {

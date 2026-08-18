@@ -140,14 +140,18 @@ void main(){
   float g1 = uGradient * 0.18 * sin(uTime * 0.61 + 1.3);
   float g2 = uGradient * 0.16 * sin(uTime * 0.47 + 4.1);
 
-  // base gradient runs straight from core to edge...
-  vec3 col = mix(uColCore, uColEdge, smoothstep(0.05, 1.0 + g2, t));
+  // three explicit radial stops — core, mid, edge — each gets a real
+  // plateau of its own so all three read as distinct, visible bands
+  // instead of the mid/edge tones only ever appearing as brief transition
+  // points between the other colors
+  vec3 col = mix(uColCore, uColMid, smoothstep(0.05, 0.3 + g1 * 0.1, t));
+  col = mix(col, uColEdge, smoothstep(0.3, 0.55 + g2 * 0.1, t));
 
-  // ...and the mid color deepens the core itself — strongest at the very
-  // center, fading outward — rather than a separate ring partway out,
-  // burned in at full strength rather than cross-faded so it reads as a
-  // rich, saturated body instead of a paler in-between average
-  float midMask = uMidBurn * exp(-pow(t / (0.45 + g1 * 0.08), 2.0));
+  // color burn optionally richens the mid band a bit further — capped well
+  // under full strength, since colorBurn(x, x) crushes toward black for any
+  // x below middle gray, which would swallow the mid stop it's meant to
+  // enhance rather than deepen it
+  float midMask = uMidBurn * 0.35 * exp(-pow((t - 0.3) / 0.25, 2.0));
   col = mix(col, colorBurn(col, uColMid), clamp(midMask, 0.0, 1.0));
 
   // soft rim + outer halo
