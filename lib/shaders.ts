@@ -128,7 +128,7 @@ void main(){
   // the strength changes rate abruptly — it just draws in and fades out.
   float distNorm = mouseDist / max(uSize, 0.0001);
   float attract = exp(-pow((distNorm - 1.0) / 0.5, 2.0));
-  wob += uHover * uHoverStrength * lobe * attract * uSize * 1.6;
+  wob += uHover * uHoverStrength * lobe * attract * uSize * 0.7;
 
   // gradient bands drift out of sync so the fill feels alive / random
   float g1 = uGradient * 0.18 * sin(uTime * 0.61 + 1.3);

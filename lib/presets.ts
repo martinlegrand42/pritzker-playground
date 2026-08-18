@@ -53,7 +53,7 @@ export const AURA_DEFAULT: AuraParams = {
   grainSize: 2.2,
   grainOn: true,
   hoverReact: true,
-  hoverStrength: 0.3,
+  hoverStrength: 0.15,
   midBurn: true,
   ...AURA_PALETTES[0],
 }
@@ -80,7 +80,7 @@ export function randomizeAura(current: AuraParams): AuraParams {
     gradient: rand(0.2, 1),
     grain: rand(0, 0.1),
     grainSize: rand(1.4, 4),
-    hoverStrength: rand(0.15, 0.6),
+    hoverStrength: rand(0.05, 0.3),
   }
 }
 

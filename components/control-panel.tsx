@@ -83,7 +83,7 @@ export function ControlPanel({ aura, setAura }: ControlPanelProps) {
         <Slider label="Breathing speed" value={aura.breathSpeed} min={0.1} max={1.2} onChange={(v) => setAura({ ...aura, breathSpeed: v })} />
         <Slider label="Gradient drift" value={aura.gradient} min={0} max={1} onChange={(v) => setAura({ ...aura, gradient: v })} />
         <Toggle label="React to hover" checked={aura.hoverReact} onChange={(v) => setAura({ ...aura, hoverReact: v })} />
-        <Slider label="Hover intensity" value={aura.hoverStrength} min={0} max={1} onChange={(v) => setAura({ ...aura, hoverStrength: v })} />
+        <Slider label="Hover intensity" value={aura.hoverStrength} min={0} max={0.6} onChange={(v) => setAura({ ...aura, hoverStrength: v })} />
       </Section>
 
       <Section title="Texture">

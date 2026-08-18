@@ -67,7 +67,7 @@ export function Stage({ aura, canvasRef, onError }: StageProps) {
       const time = (performance.now() - start) / 1000
 
       // ease hover
-      hoverRef.current += (hoverTargetRef.current - hoverRef.current) * 0.08
+      hoverRef.current += (hoverTargetRef.current - hoverRef.current) * 0.05
       const hover = hoverRef.current
       const [pu, pv] = pointerRef.current
 
@@ -79,7 +79,11 @@ export function Stage({ aura, canvasRef, onError }: StageProps) {
       const my = ((pv - 0.5) * h) / minWH
       const rawDist = Math.hypot(mx, my)
 
-      smoothDistRef.current += (rawDist - smoothDistRef.current) * 0.15
+      // Stronger easing than a simple hover-position filter needs — this is
+      // deliberately laggy, like the shape takes a moment to notice the
+      // cursor, so a fast pass across it reads as an unhurried drift rather
+      // than tracking the pointer in real time.
+      smoothDistRef.current += (rawDist - smoothDistRef.current) * 0.06
 
       // only chase a new angle once the cursor is far enough from center for
       // that angle to mean anything — otherwise hold the last stable one
@@ -87,8 +91,8 @@ export function Stage({ aura, canvasRef, onError }: StageProps) {
         const rawAngle = Math.atan2(my, mx)
         let diff = rawAngle - smoothAngleRef.current
         diff = ((diff + Math.PI) % (2 * Math.PI)) - Math.PI // shortest direction, wrapped to [-pi, pi]
-        const maxStep = 0.12 // radians/frame cap — the hard guarantee against snapping
-        smoothAngleRef.current += Math.max(-maxStep, Math.min(maxStep, diff * 0.2))
+        const maxStep = 0.05 // radians/frame cap — the hard guarantee against snapping
+        smoothAngleRef.current += Math.max(-maxStep, Math.min(maxStep, diff * 0.08))
       }
 
       const smoothMouse: [number, number] = [
