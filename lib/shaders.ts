@@ -119,15 +119,16 @@ void main(){
   float mouseDist = length(uMouse);
   float mouseAng = atan(uMouse.y, uMouse.x);
   float lobe = exp(-(1.0 - cos(ang - mouseAng)) * 2.2);
-  float proximity = 1.0 - smoothstep(0.0, uSize * 2.4, mouseDist);
-  // the cursor's angle gets touchy the closer it is to the center — not
-  // just exactly at it, but across the whole middle of the shape, since a
-  // small move near the middle swings the angle far more than the same
-  // move would near the rim. So this isn't a point to dodge, it's a zone:
-  // no directional effect anywhere in the middle, only once the cursor is
-  // actually over the rim/sides.
-  float centerFade = smoothstep(uSize * 0.55, uSize * 0.95, mouseDist);
-  wob += uHover * uHoverStrength * lobe * proximity * centerFade * uSize * 1.6;
+  // the wobble is "attracted" toward the cursor most strongly right around
+  // the edge, easing smoothly toward zero in both directions — toward the
+  // center (where a cursor's angle is touchy and swings far more than the
+  // same move would near the rim, so there's deliberately no directional
+  // effect there at all) and out past the shape. One continuous bell curve
+  // rather than two separate step functions means there's no seam where
+  // the strength changes rate abruptly — it just draws in and fades out.
+  float distNorm = mouseDist / max(uSize, 0.0001);
+  float attract = exp(-pow((distNorm - 1.0) / 0.5, 2.0));
+  wob += uHover * uHoverStrength * lobe * attract * uSize * 1.6;
 
   // gradient bands drift out of sync so the fill feels alive / random
   float g1 = uGradient * 0.18 * sin(uTime * 0.61 + 1.3);
