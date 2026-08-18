@@ -140,18 +140,23 @@ void main(){
   float g1 = uGradient * 0.18 * sin(uTime * 0.61 + 1.3);
   float g2 = uGradient * 0.16 * sin(uTime * 0.47 + 4.1);
 
-  // three explicit radial stops — core, mid, edge — each gets a real
-  // plateau of its own so all three read as distinct, visible bands
-  // instead of the mid/edge tones only ever appearing as brief transition
-  // points between the other colors
-  vec3 col = mix(uColCore, uColMid, smoothstep(0.05, 0.3 + g1 * 0.1, t));
-  col = mix(col, uColEdge, smoothstep(0.3, 0.55 + g2 * 0.1, t));
+  // three radial color stops — core, mid, edge — blended with a plain
+  // linear ramp between each pair rather than chained smoothstep curves.
+  // Two smoothsteps glued end to end each flatten to zero slope right at
+  // the join, which reads as a visible ring where the color stops
+  // changing for a moment — a hard step, not a blend. A linear ramp keeps
+  // the color changing at a constant rate through the whole radius, which
+  // is what an actually smooth gradient looks like.
+  float midPos = 0.32 + g1 * 0.1;
+  float edgePos = 0.62 + g2 * 0.1;
+  vec3 col = mix(uColCore, uColMid, clamp(t / midPos, 0.0, 1.0));
+  col = mix(col, uColEdge, clamp((t - midPos) / (edgePos - midPos), 0.0, 1.0));
 
   // color burn optionally richens the mid band a bit further — capped well
   // under full strength, since colorBurn(x, x) crushes toward black for any
   // x below middle gray, which would swallow the mid stop it's meant to
   // enhance rather than deepen it
-  float midMask = uMidBurn * 0.35 * exp(-pow((t - 0.3) / 0.25, 2.0));
+  float midMask = uMidBurn * 0.35 * exp(-pow((t - midPos) / 0.25, 2.0));
   col = mix(col, colorBurn(col, uColMid), clamp(midMask, 0.0, 1.0));
 
   // soft rim + outer halo
