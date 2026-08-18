@@ -129,49 +129,45 @@ void main(){
   float centerFade = smoothstep(uSize * 0.55, uSize * 0.95, mouseDist);
   wob += uHover * uHoverStrength * lobe * proximity * centerFade * uSize * 1.6;
 
-  // slow breathing (scale in / out)
-  float breath = 1.0 + uBreath * sin(uTime * uBreathSpeed);
-  float radius = uSize * breath + wob;
-
-  // normalized distance inside the mark
-  float t = rr / max(radius, 0.0001);
-
   // gradient bands drift out of sync so the fill feels alive / random
   float g1 = uGradient * 0.18 * sin(uTime * 0.61 + 1.3);
   float g2 = uGradient * 0.16 * sin(uTime * 0.47 + 4.1);
 
-  // three radial color stops — core, mid, edge — blended with a plain
-  // linear ramp between each pair rather than chained smoothstep curves.
-  // Two smoothsteps glued end to end each flatten to zero slope right at
-  // the join, which reads as a visible ring where the color stops
-  // changing for a moment — a hard step, not a blend. A linear ramp keeps
-  // the color changing at a constant rate through the whole radius, which
-  // is what an actually smooth gradient looks like.
-  float midPos = 0.32 + g1 * 0.1;
-  float edgePos = 0.62 + g2 * 0.1;
-  vec3 col = mix(uColCore, uColMid, clamp(t / midPos, 0.0, 1.0));
-  col = mix(col, uColEdge, clamp((t - midPos) / (edgePos - midPos), 0.0, 1.0));
+  // Matches the Figma source exactly: this mark is three separately
+  // blurred circles (core, mid, edge) stacked with normal blending, mid
+  // using a Color Burn blend mode — not a single radial gradient. Core
+  // and mid breathe between two given keyframe sizes while edge stays
+  // essentially fixed; the sizes below are those keyframe diameters
+  // converted to fractions of the (roughly constant) edge radius, and
+  // every layer shares the same absolute blur radius.
+  float phi = 0.5 + 0.5 * sin(uTime * uBreathSpeed); // 0..1 breathing phase
+  float breathAmt = uBreath / 0.08; // 1.0 reproduces the given keyframes exactly
+  float coreR = uSize * mix(0.445, 0.615, phi * breathAmt);
+  float midR = uSize * mix(0.572, 0.779, phi * breathAmt) * (1.0 + g1 * 0.04);
+  float edgeR = uSize * (1.0 + g2 * 0.02);
+  float blur = uSize * 0.516 * (uSoftness / 0.4);
 
-  // color burn optionally richens the mid band a bit further — capped well
-  // under full strength, since colorBurn(x, x) crushes toward black for any
-  // x below middle gray, which would swallow the mid stop it's meant to
-  // enhance rather than deepen it
-  float midMask = uMidBurn * 0.35 * exp(-pow((t - midPos) / 0.25, 2.0));
-  col = mix(col, colorBurn(col, uColMid), clamp(midMask, 0.0, 1.0));
+  // same ambient + hover wobble as before, shifting the shared distance
+  // measurement so all three circles lean together as one blob instead
+  // of wobbling independently
+  float rrEff = rr - wob;
 
-  // soft rim + outer halo
-  float mask = 1.0 - smoothstep(1.0 - uSoftness, 1.0 + uSoftness, t);
-  float halo = exp(-pow(max(t - 1.0, 0.0) / (uSoftness * 1.4 + 0.08), 2.0));
+  float coreA = 1.0 - smoothstep(coreR - blur, coreR + blur, rrEff);
+  float midA = 1.0 - smoothstep(midR - blur, midR + blur, rrEff);
+  float edgeA = 1.0 - smoothstep(edgeR - blur, edgeR + blur, rrEff);
 
-  vec3 outCol = mix(uColBg, col, mask);
-  outCol = mix(outCol, mix(uColBg, uColEdge, 0.6), halo * (1.0 - mask) * 0.5);
+  vec3 col = mix(uColBg, uColEdge, edgeA);
+  vec3 midNormal = mix(col, uColMid, midA);
+  vec3 midBurned = mix(col, colorBurn(col, uColMid), midA);
+  col = mix(midNormal, midBurned, uMidBurn);
+  col = mix(col, uColCore, coreA);
 
   // grain dither, sampled per cell (not per pixel) so it reads as soft
   // clumped grain instead of single-pixel static, and fixed in time
   vec2 grainCell = floor(gl_FragCoord.xy / max(uGrainSize, 1.0));
   float gr = grain(grainCell);
-  outCol += (gr - 0.5) * uGrain;
+  col += (gr - 0.5) * uGrain;
 
-  gl_FragColor = vec4(outCol, 1.0);
+  gl_FragColor = vec4(col, 1.0);
 }
 `
