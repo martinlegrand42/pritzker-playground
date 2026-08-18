@@ -140,8 +140,12 @@ void main(){
   float g1 = uGradient * 0.18 * sin(uTime * 0.61 + 1.3);
   float g2 = uGradient * 0.16 * sin(uTime * 0.47 + 4.1);
 
-  // base gradient runs straight from core to edge...
-  vec3 col = mix(uColCore, uColEdge, smoothstep(0.05, 1.0 + g2, t));
+  // base gradient runs straight from core to edge, finishing well before
+  // the rim so the edge color gets a real plateau of its own — otherwise
+  // it's still mixing toward edge at the same t where the halo below
+  // starts pulling everything toward the background, and edge never gets
+  // to read as its own visible band
+  vec3 col = mix(uColCore, uColEdge, smoothstep(0.05, 0.6 + g2, t));
 
   // ...and the mid color washes over it as a soft band partway out, burned
   // in at full strength rather than cross-faded, so it reads as a rich,
