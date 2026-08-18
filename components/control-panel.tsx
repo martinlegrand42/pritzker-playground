@@ -1,68 +1,18 @@
 'use client'
 
 import { ColorField, Section, Slider, Toggle } from './ui-controls'
-import { cn } from '@/lib/utils'
-import { AURA_PALETTES, type AuraParams } from '@/lib/presets'
+import { type AuraParams } from '@/lib/presets'
 
 interface ControlPanelProps {
   aura: AuraParams
   setAura: (p: AuraParams) => void
 }
 
-function PaletteRow({
-  swatches,
-  active,
-  onSelect,
-}: {
-  swatches: { name: string; colors: string[] }[]
-  active: string[]
-  onSelect: (i: number) => void
-}) {
-  const activeKey = active.join()
-  return (
-    <div className="flex flex-wrap gap-2">
-      {swatches.map((p, i) => {
-        const key = p.colors.join()
-        return (
-          <button
-            key={p.name}
-            type="button"
-            title={p.name}
-            aria-label={`Palette ${p.name}`}
-            onClick={() => onSelect(i)}
-            className={cn(
-              'flex h-7 overflow-hidden rounded-full border transition-all',
-              activeKey === key
-                ? 'border-primary ring-2 ring-primary/25'
-                : 'border-border hover:border-primary/40',
-            )}
-          >
-            {p.colors.map((c, j) => (
-              <span key={j} className="h-full w-4" style={{ backgroundColor: c }} />
-            ))}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 export function ControlPanel({ aura, setAura }: ControlPanelProps) {
   return (
     <div className="flex flex-col">
       <Section title="Palette">
-        <PaletteRow
-          swatches={AURA_PALETTES.map((p) => ({
-            name: p.name,
-            colors: [p.colBg, p.colEdge, p.colMid, p.colCore],
-          }))}
-          active={[aura.colBg, aura.colEdge, aura.colMid, aura.colCore]}
-          onSelect={(i) => {
-            const p = AURA_PALETTES[i]
-            setAura({ ...aura, colCore: p.colCore, colMid: p.colMid, colEdge: p.colEdge, colBg: p.colBg })
-          }}
-        />
-        <div className="grid grid-cols-1 gap-3 pt-1">
+        <div className="grid grid-cols-1 gap-3">
           <ColorField label="Core" value={aura.colCore} onChange={(v) => setAura({ ...aura, colCore: v })} />
           <ColorField label="Mid" value={aura.colMid} onChange={(v) => setAura({ ...aura, colMid: v })} />
           <ColorField label="Edge" value={aura.colEdge} onChange={(v) => setAura({ ...aura, colEdge: v })} />
