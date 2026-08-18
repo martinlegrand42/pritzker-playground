@@ -33,7 +33,7 @@ interface AuraPalette {
 // hue for the transitional ring, and colBg is a near-white ground that
 // the edge fades into.
 export const AURA_PALETTES: AuraPalette[] = [
-  { name: 'Pritzker Blue', colCore: '#2438c9', colMid: '#182a9e', colEdge: '#aac6ff', colBg: '#f4f7fc' },
+  { name: 'Pritzker Blue', colCore: '#1c2ad4', colMid: '#121f96', colEdge: '#aac6ff', colBg: '#f4f7fc' },
   { name: 'Ember', colCore: '#d6491c', colMid: '#a83112', colEdge: '#ffcfa3', colBg: '#fdf6f0' },
   { name: 'Verdant', colCore: '#17915a', colMid: '#0f6e42', colEdge: '#b9f0d3', colBg: '#f2fbf6' },
   { name: 'Orchid', colCore: '#9a2bc4', colMid: '#711f92', colEdge: '#edc2ff', colBg: '#faf2fc' },
