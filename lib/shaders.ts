@@ -106,10 +106,16 @@ void main(){
   // on hover, a single smooth lobe of liquid gathers toward the cursor —
   // rounded like a lava-lamp blob, not a spike, and added rather than
   // multiplied so it never sharpens the ambient wobble
+  float mouseDist = length(uMouse);
   float mouseAng = atan(uMouse.y, uMouse.x);
   float lobe = exp(-(1.0 - cos(ang - mouseAng)) * 2.2);
-  float proximity = 1.0 - smoothstep(0.0, uSize * 2.4, length(uMouse));
-  wob += uHover * uHoverStrength * lobe * proximity * uSize * 1.6;
+  float proximity = 1.0 - smoothstep(0.0, uSize * 2.4, mouseDist);
+  // the cursor's angle is undefined right at the center — atan2 swings
+  // wildly there, which reads as the lobe jumping when crossing an axis
+  // near the middle. Fade the whole directional effect out before that
+  // instability kicks in, so it settles rather than flickering.
+  float centerFade = smoothstep(0.0, uSize * 0.4, mouseDist);
+  wob += uHover * uHoverStrength * lobe * proximity * centerFade * uSize * 1.6;
 
   // slow breathing (scale in / out)
   float breath = 1.0 + uBreath * sin(uTime * uBreathSpeed);
