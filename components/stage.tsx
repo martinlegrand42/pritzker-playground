@@ -24,6 +24,11 @@ export function Stage({ aura, canvasRef, onError }: StageProps) {
   const pointerRef = useRef<[number, number]>([0.5, 0.5])
   const hoverRef = useRef(0)
   const hoverTargetRef = useRef(0)
+  // The raw cursor position jumps a lot between frames when moved quickly;
+  // feeding that straight into the angle math made the liquid lobe's
+  // direction snap around instead of following smoothly. Ease the position
+  // itself, the same way hover intensity already eases.
+  const smoothMouseRef = useRef<[number, number]>([0, 0])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -66,11 +71,13 @@ export function Stage({ aura, canvasRef, onError }: StageProps) {
       const minWH = Math.min(w, h) || 1
       const mx = ((pu - 0.5) * w) / minWH
       const my = ((pv - 0.5) * h) / minWH
+      smoothMouseRef.current[0] += (mx - smoothMouseRef.current[0]) * 0.15
+      smoothMouseRef.current[1] += (my - smoothMouseRef.current[1]) * 0.15
 
       const p = auraRef.current
       const uniforms: Uniforms = {
         uTime: time,
-        uMouse: [mx, my],
+        uMouse: smoothMouseRef.current,
         uHover: p.hoverReact ? hover : 0,
         uSize: p.size,
         uWobble: p.wobble,
@@ -79,7 +86,7 @@ export function Stage({ aura, canvasRef, onError }: StageProps) {
         uBreathSpeed: p.breathSpeed,
         uSoftness: p.softness,
         uGradient: p.gradient,
-        uGrain: p.grain,
+        uGrain: p.grainOn ? p.grain : 0,
         uGrainSize: p.grainSize,
         uHoverStrength: p.hoverStrength,
         uMidBurn: p.midBurn ? 1 : 0,

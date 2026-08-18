@@ -87,7 +87,8 @@ export function ControlPanel({ aura, setAura }: ControlPanelProps) {
       </Section>
 
       <Section title="Texture">
-        <Slider label="Grain" value={aura.grain} min={0} max={0.16} onChange={(v) => setAura({ ...aura, grain: v })} />
+        <Toggle label="Grain" checked={aura.grainOn} onChange={(v) => setAura({ ...aura, grainOn: v })} />
+        <Slider label="Grain amount" value={aura.grain} min={0} max={0.16} onChange={(v) => setAura({ ...aura, grain: v })} />
         <Slider label="Grain size" value={aura.grainSize} min={1} max={6} step={0.1} onChange={(v) => setAura({ ...aura, grainSize: v })} />
       </Section>
     </div>

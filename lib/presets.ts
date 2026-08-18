@@ -8,6 +8,7 @@ export interface AuraParams {
   gradient: number
   grain: number
   grainSize: number
+  grainOn: boolean
   hoverReact: boolean
   hoverStrength: number
   midBurn: boolean
@@ -25,17 +26,24 @@ interface AuraPalette {
   colBg: string
 }
 
-// Four brand palettes for Aura's center-out mix.
+// Six brand palettes for Aura's center-out mix, all sharing the same role
+// structure matched to the studio's reference image: colCore is a rich,
+// saturated body color (no bright hotspot), colMid is a deeper accent
+// burned in as a soft interior band, colEdge is a light tint of the same
+// hue for the transitional ring, and colBg is a near-white ground that
+// the edge fades into.
 export const AURA_PALETTES: AuraPalette[] = [
-  { name: 'Pritzker Blue', colCore: '#e4ecff', colMid: '#6f95ff', colEdge: '#1c2b7a', colBg: '#04050d' },
-  { name: 'Ember', colCore: '#ffe9c2', colMid: '#ff9d3d', colEdge: '#7a2600', colBg: '#0d0300' },
-  { name: 'Verdant', colCore: '#e6fff2', colMid: '#5fe0a0', colEdge: '#0d4a2e', colBg: '#020a06' },
-  { name: 'Orchid', colCore: '#fbe6ff', colMid: '#c060e0', colEdge: '#4a1060', colBg: '#0a020c' },
+  { name: 'Pritzker Blue', colCore: '#2438c9', colMid: '#182a9e', colEdge: '#aac6ff', colBg: '#f4f7fc' },
+  { name: 'Ember', colCore: '#d6491c', colMid: '#a83112', colEdge: '#ffcfa3', colBg: '#fdf6f0' },
+  { name: 'Verdant', colCore: '#17915a', colMid: '#0f6e42', colEdge: '#b9f0d3', colBg: '#f2fbf6' },
+  { name: 'Orchid', colCore: '#9a2bc4', colMid: '#711f92', colEdge: '#edc2ff', colBg: '#faf2fc' },
+  { name: 'Slate', colCore: '#445066', colMid: '#2c3547', colEdge: '#cdd6e3', colBg: '#f7f8fa' },
+  { name: 'Gold', colCore: '#c98a12', colMid: '#9c6708', colEdge: '#ffe7ad', colBg: '#fdfaf2' },
 ]
 
 export const AURA_DEFAULT: AuraParams = {
-  size: 0.34,
-  softness: 0.35,
+  size: 0.55,
+  softness: 0.4,
   wobble: 0.05,
   wobbleSpeed: 0.4,
   breath: 0.08,
@@ -43,6 +51,7 @@ export const AURA_DEFAULT: AuraParams = {
   gradient: 0.6,
   grain: 0.06,
   grainSize: 2.2,
+  grainOn: true,
   hoverReact: true,
   hoverStrength: 0.3,
   midBurn: true,
@@ -62,8 +71,8 @@ export function randomizeAura(current: AuraParams): AuraParams {
   return {
     ...current,
     ...palette,
-    size: rand(0.24, 0.5),
-    softness: rand(0.12, 0.7),
+    size: rand(0.3, 0.6),
+    softness: rand(0.15, 0.6),
     wobble: rand(0.01, 0.14),
     wobbleSpeed: rand(0.15, 1),
     breath: rand(0.02, 0.16),
