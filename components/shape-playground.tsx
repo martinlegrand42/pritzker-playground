@@ -1,37 +1,18 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Clapperboard, Dices, Download, ImageDown, RotateCcw } from 'lucide-react'
-import { Stage } from './stage'
-import { ControlPanel } from './control-panel'
+import { Clapperboard, Download, ImageDown, RotateCcw } from 'lucide-react'
+import { ShapeStage } from './shape-stage'
+import { ShapeControlPanel } from './shape-control-panel'
 import { StudioNav } from './studio-nav'
-import { cn } from '@/lib/utils'
 import { exportPng, recordLoop, downloadVideo } from '@/lib/export'
 import { loadPersisted, savePersisted } from '@/lib/persist'
-import { AURA_DEFAULT, randomizeAura, type AuraParams } from '@/lib/presets'
+import { SHAPE_DEFAULT, type ShapeParams } from '@/lib/shape-presets'
 
-type Aspect = 'square' | 'wide' | 'portrait' | 'fill'
+const STORAGE_KEY = 'pritzker-identity-studio:shape:v1'
 
-const ASPECTS: { id: Aspect; label: string; ratio?: number }[] = [
-  { id: 'fill', label: 'Fill' },
-  { id: 'square', label: '1:1', ratio: 1 },
-  { id: 'wide', label: '16:9', ratio: 16 / 9 },
-  { id: 'portrait', label: '4:5', ratio: 4 / 5 },
-]
-
-const STORAGE_KEY = 'pritzker-identity-studio:v1'
-
-interface PersistedState {
-  aspect: Aspect
-  aura: AuraParams
-}
-
-export function Playground() {
-  // SSR/first paint always uses these defaults, matching the static
-  // prerender exactly — no hydration mismatch. A mount-only effect below
-  // then corrects from localStorage if there's a saved look.
-  const [aura, setAuraState] = useState<AuraParams>(AURA_DEFAULT)
-  const [aspect, setAspectState] = useState<Aspect>('fill')
+export function ShapePlayground() {
+  const [shape, setShapeState] = useState<ShapeParams>(SHAPE_DEFAULT)
   const [error, setError] = useState<string | null>(null)
 
   const [recording, setRecording] = useState(false)
@@ -41,31 +22,16 @@ export function Playground() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const recordHandle = useRef<{ stop: () => void } | null>(null)
 
-  // Load any saved look once, after mount (client-only, so it can't create
-  // a hydration mismatch). This uses the raw setters, not the persisting
-  // wrappers below — hydrating shouldn't itself trigger a write.
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    const saved = loadPersisted<PersistedState>(STORAGE_KEY)
-    if (!saved) return
-    if (saved.aspect && ASPECTS.some((a) => a.id === saved.aspect)) setAspectState(saved.aspect)
-    if (saved.aura) setAuraState((p) => ({ ...p, ...saved.aura }))
+    const saved = loadPersisted<ShapeParams>(STORAGE_KEY)
+    if (saved) setShapeState((p) => ({ ...p, ...saved }))
   }, [])
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  // Every user-driven change persists immediately, using the value it just
-  // computed rather than whatever's in the outer closure — so this can
-  // never race with (or be raced by) the load effect above.
-  const setAspect = (next: Aspect) => {
-    setAspectState(next)
-    savePersisted<PersistedState>(STORAGE_KEY, { aspect: next, aura })
-  }
-  const setAura = (updater: AuraParams | ((p: AuraParams) => AuraParams)) => {
-    setAuraState((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater
-      savePersisted<PersistedState>(STORAGE_KEY, { aspect, aura: next })
-      return next
-    })
+  const setShape = (next: ShapeParams) => {
+    setShapeState(next)
+    savePersisted<ShapeParams>(STORAGE_KEY, next)
   }
 
   useEffect(() => {
@@ -74,15 +40,12 @@ export function Playground() {
     return () => clearTimeout(t)
   }, [toast])
 
-  const activeRatio = ASPECTS.find((a) => a.id === aspect)?.ratio
-
-  const handleRandomize = () => setAura((p) => randomizeAura(p))
-  const handleReset = () => setAura(AURA_DEFAULT)
+  const handleReset = () => setShape(SHAPE_DEFAULT)
 
   const handleExportPng = () => {
     const canvas = canvasRef.current
     if (!canvas) return
-    exportPng(canvas, `pritzker-aura-${Date.now()}`)
+    exportPng(canvas, `pritzker-shape-${Date.now()}`)
     setToast('Still frame exported (.png)')
   }
 
@@ -102,11 +65,13 @@ export function Playground() {
           setToast('Video recording is not supported in this browser')
           return
         }
-        downloadVideo(url, `pritzker-aura-loop-${Date.now()}`)
+        downloadVideo(url, `pritzker-shape-loop-${Date.now()}`)
         setToast('6s loop exported (.webm)')
       },
     )
   }
+
+  const ratio = shape.widthPx / shape.heightPx
 
   return (
     <main className="flex min-h-screen flex-col bg-background lg:h-screen lg:overflow-hidden">
@@ -127,7 +92,6 @@ export function Playground() {
         <StudioNav />
 
         <div className="flex items-center gap-1.5">
-          <ToolButton onClick={handleRandomize} icon={<Dices className="h-4 w-4" />} label="Generate" hideLabelOnMobile />
           <ToolButton onClick={handleReset} icon={<RotateCcw className="h-4 w-4" />} label="Reset" hideLabelOnMobile />
           <div className="mx-1 hidden h-5 w-px bg-border sm:block" />
           <ToolButton onClick={handleExportPng} icon={<ImageDown className="h-4 w-4" />} label="PNG" hideLabelOnMobile />
@@ -148,32 +112,16 @@ export function Playground() {
         {/* Stage */}
         <div className="relative flex min-h-[52vh] flex-1 items-center justify-center overflow-hidden p-4 md:p-8 lg:min-h-0">
           <StageGrid />
-          {/* Aspect chips */}
-          <div className="absolute left-4 top-4 z-10 flex gap-1 rounded-full border border-border bg-card/80 p-1 backdrop-blur md:left-8 md:top-8">
-            {ASPECTS.map((a) => (
-              <button
-                key={a.id}
-                type="button"
-                onClick={() => setAspect(a.id)}
-                className={cn(
-                  'rounded-full px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors',
-                  aspect === a.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                {a.label}
-              </button>
-            ))}
-          </div>
 
           <div
-            className="relative z-[1] max-h-full max-w-full overflow-hidden rounded-2xl border border-border shadow-[0_20px_60px_-24px_rgba(20,30,80,0.35)] ring-1 ring-black/5"
-            style={
-              activeRatio
-                ? { aspectRatio: String(activeRatio), width: activeRatio >= 1 ? 'min(100%, 900px)' : 'auto', height: activeRatio >= 1 ? 'auto' : 'min(100%, 640px)' }
-                : { width: '100%', height: '100%' }
-            }
+            className="relative z-[1] max-h-full max-w-full overflow-hidden shadow-[0_20px_60px_-24px_rgba(20,30,80,0.35)] ring-1 ring-black/5"
+            style={{
+              aspectRatio: String(ratio),
+              width: ratio >= 1 ? 'min(100%, 900px)' : 'auto',
+              height: ratio >= 1 ? 'auto' : 'min(100%, 640px)',
+            }}
           >
-            <Stage aura={aura} canvasRef={canvasRef} onError={setError} />
+            <ShapeStage shape={shape} canvasRef={canvasRef} onError={setError} />
             {error ? (
               <div className="absolute inset-0 flex items-center justify-center bg-secondary/95 p-6 text-center text-sm text-muted-foreground">
                 {error}
@@ -186,25 +134,19 @@ export function Playground() {
         <aside className="flex w-full shrink-0 flex-col border-t border-border bg-card lg:w-[344px] lg:border-l lg:border-t-0 lg:overflow-y-auto">
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
             <div>
-              <p className="text-sm font-semibold">Aura</p>
-              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">The mark</p>
+              <p className="text-sm font-semibold">Shape</p>
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                A bounded primitive
+              </p>
             </div>
-            <button
-              type="button"
-              onClick={handleRandomize}
-              className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
-            >
-              <Dices className="h-3.5 w-3.5" />
-              Generate
-            </button>
           </div>
 
-          <ControlPanel aura={aura} setAura={setAura} />
+          <ShapeControlPanel shape={shape} setShape={setShape} />
 
           <div className="mt-auto border-t border-border px-5 py-4">
             <p className="text-[11px] leading-relaxed text-muted-foreground">
-              A living mark that breathes and wobbles — never a perfect circle. Hover it, generate
-              variations, then export a still or a 6-second loop.
+              A plain or bordered rounded rectangle. Move the cursor near its edge to defocus it
+              locally, like a lens — then export a still or a 6-second loop.
             </p>
           </div>
         </aside>

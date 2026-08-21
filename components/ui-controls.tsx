@@ -81,6 +81,63 @@ export function Toggle({
   )
 }
 
+// A bounded numeric field (px dimensions, etc). Mirrors ColorField's
+// draft-text-then-commit pattern so typing a value doesn't fight the
+// cursor, but clamps every committed value to [min, max] so it can't
+// produce a degenerate/broken shape.
+export function NumberField({
+  label,
+  value,
+  min,
+  max,
+  step = 1,
+  suffix = 'px',
+  onChange,
+}: {
+  label: string
+  value: number
+  min: number
+  max: number
+  step?: number
+  suffix?: string
+  onChange: (value: number) => void
+}) {
+  const [text, setText] = useState(String(value))
+  const [prevValue, setPrevValue] = useState(value)
+  if (value !== prevValue) {
+    setPrevValue(value)
+    setText(String(value))
+  }
+
+  const commit = (raw: string) => {
+    const n = Number(raw)
+    if (Number.isFinite(n)) onChange(Math.min(max, Math.max(min, n)))
+  }
+
+  return (
+    <label className="flex items-center justify-between gap-3 text-xs text-foreground">
+      <span>{label}</span>
+      <span className="flex items-center gap-1.5">
+        <input
+          type="number"
+          value={text}
+          min={min}
+          max={max}
+          step={step}
+          onChange={(e) => {
+            setText(e.target.value)
+            commit(e.target.value)
+          }}
+          onBlur={() => setText(String(value))}
+          aria-label={label}
+          className="w-16 rounded border border-border bg-transparent px-1.5 py-1 text-right font-mono text-[11px] text-foreground focus:border-primary focus:outline-none"
+        />
+        <span className="font-mono text-[10px] text-muted-foreground">{suffix}</span>
+      </span>
+    </label>
+  )
+}
+
 // A swatch (native picker, for quick browsing) paired with a hex text field
 // that is the actual source of truth — typing/pasting a hex code is always
 // the primary way to set an exact value, never just whatever RGB UI the
