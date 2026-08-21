@@ -1,8 +1,8 @@
 'use client'
 
-import { ColorField, NumberField, Section, Slider, Toggle } from './ui-controls'
+import { ColorField, Section, Slider, Toggle } from './ui-controls'
 import { cn } from '@/lib/utils'
-import { SHAPE_LIMITS, type ShapeParams, type ShapeType } from '@/lib/shape-presets'
+import { SHAPE_LIMITS, SHAPE_TYPE_SIZE, type ShapeParams, type ShapeType } from '@/lib/shape-presets'
 
 interface ShapeControlPanelProps {
   shape: ShapeParams
@@ -17,13 +17,9 @@ const SHAPE_TYPES: { id: ShapeType; label: string }[] = [
 
 export function ShapeControlPanel({ shape, setShape }: ShapeControlPanelProps) {
   const maxRadius = Math.min(shape.widthPx, shape.heightPx) / 2
-  const locked = shape.shapeType !== 'rectangle'
 
   const setShapeType = (shapeType: ShapeType) => {
-    // Square/circle are 1:1 — snap height to width once, right when
-    // switching in, rather than fighting the width field on every edit.
-    const next = shapeType === 'rectangle' ? { shapeType } : { shapeType, heightPx: shape.widthPx }
-    setShape({ ...shape, ...next })
+    setShape({ ...shape, shapeType, ...SHAPE_TYPE_SIZE[shapeType] })
   }
 
   return (
@@ -46,32 +42,6 @@ export function ShapeControlPanel({ shape, setShape }: ShapeControlPanelProps) {
             </button>
           ))}
         </div>
-        {locked ? (
-          <NumberField
-            label="Size"
-            value={shape.widthPx}
-            min={SHAPE_LIMITS.widthPx.min}
-            max={SHAPE_LIMITS.widthPx.max}
-            onChange={(v) => setShape({ ...shape, widthPx: v, heightPx: v })}
-          />
-        ) : (
-          <>
-            <NumberField
-              label="Width"
-              value={shape.widthPx}
-              min={SHAPE_LIMITS.widthPx.min}
-              max={SHAPE_LIMITS.widthPx.max}
-              onChange={(v) => setShape({ ...shape, widthPx: v })}
-            />
-            <NumberField
-              label="Height"
-              value={shape.heightPx}
-              min={SHAPE_LIMITS.heightPx.min}
-              max={SHAPE_LIMITS.heightPx.max}
-              onChange={(v) => setShape({ ...shape, heightPx: v })}
-            />
-          </>
-        )}
         <Slider
           label="Zoom"
           value={shape.zoom}
