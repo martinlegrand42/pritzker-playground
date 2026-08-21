@@ -7,6 +7,7 @@ export interface ShapeParams {
   bordered: boolean
   borderWidthPx: number
   hoverIntensity: number
+  zoom: number
 }
 
 export const SHAPE_LIMITS = {
@@ -14,6 +15,7 @@ export const SHAPE_LIMITS = {
   heightPx: { min: 64, max: 1600 },
   radiusPx: { min: 0, max: 400 },
   borderWidthPx: { min: 1, max: 120 },
+  zoom: { min: 0.35, max: 1 },
 } as const
 
 export const SHAPE_DEFAULT: ShapeParams = {
@@ -25,4 +27,5 @@ export const SHAPE_DEFAULT: ShapeParams = {
   bordered: false,
   borderWidthPx: 10,
   hoverIntensity: 0.6,
+  zoom: 1,
 }

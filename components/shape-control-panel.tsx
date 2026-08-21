@@ -28,6 +28,14 @@ export function ShapeControlPanel({ shape, setShape }: ShapeControlPanelProps) {
           max={SHAPE_LIMITS.heightPx.max}
           onChange={(v) => setShape({ ...shape, heightPx: v })}
         />
+        <Slider
+          label="Zoom"
+          value={shape.zoom}
+          min={SHAPE_LIMITS.zoom.min}
+          max={SHAPE_LIMITS.zoom.max}
+          format={(v) => `${Math.round(v * 100)}%`}
+          onChange={(v) => setShape({ ...shape, zoom: v })}
+        />
       </Section>
 
       <Section title="Color">

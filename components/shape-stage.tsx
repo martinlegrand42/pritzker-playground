@@ -7,7 +7,8 @@ import { hexToRgb } from '@/lib/presets'
 import { type ShapeParams } from '@/lib/shape-presets'
 
 // Fraction of the canvas's short side left as a background margin around
-// the shape, so the background color always reads as a visible frame.
+// the shape at full zoom, so the background color always reads as a
+// visible frame even before the user dezooms it further.
 const PADDING_FRACTION = 0.08
 
 interface ShapeStageProps {
@@ -61,8 +62,17 @@ export function ShapeStage({ shape, canvasRef, onError }: ShapeStageProps) {
       const height = canvas.clientHeight || 1
       const dpr = renderer ? renderer.canvas.width / width : 1
 
-      const padding = PADDING_FRACTION * Math.min(width, height) * dpr
-      const halfShort = 0.5 * Math.min(width, height) - padding / dpr
+      // Zoom scales the shape's own half-extent down from its full-frame
+      // size (zoom = 1, the original tight framing) toward the canvas
+      // center, which grows the margin around it on every side — "dezoom"
+      // reads as the shape shrinking away within a fixed-size frame.
+      const minSideDevice = Math.min(width, height) * dpr
+      const basePadding = PADDING_FRACTION * minSideDevice
+      const baseHalf = 0.5 * minSideDevice - basePadding
+      const zoom = Math.min(1, Math.max(p.zoom, 0))
+      const shapeHalf = zoom * baseHalf
+      const padding = 0.5 * minSideDevice - shapeHalf
+      const halfShort = shapeHalf / dpr
       const radius = Math.min(p.radiusPx, Math.max(halfShort, 0)) * dpr
 
       const [mx, my] = pointerRef.current

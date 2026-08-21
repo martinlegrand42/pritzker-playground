@@ -44,9 +44,9 @@ void main() {
   // canvas so it scales with the shape rather than being a fixed pixel
   // radius. Blur radius peaks at the cursor and eases to zero by its rim.
   float minSide = min(uResolution.x, uResolution.y);
-  float lensRadius = 0.4 * minSide;
+  float lensRadius = 0.5 * minSide;
   float falloff = 1.0 - smoothstep(0.0, lensRadius, length(gl_FragCoord.xy - uMouse));
-  float maxBlur = 0.16 * minSide;
+  float maxBlur = 0.32 * minSide;
   float blur = max(uHoverIntensity * maxBlur * falloff, 1.0); // 1px floor keeps a clean edge at rest
 
   float alpha = 1.0 - smoothstep(-blur, blur, sdf);
