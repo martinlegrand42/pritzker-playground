@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - claude/pritzker-generative-playground-uu8iq6
+      - claude/pritzker-wysiwyg-playground-xth69g
   workflow_dispatch:
 
 permissions:
