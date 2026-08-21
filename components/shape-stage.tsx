@@ -73,7 +73,11 @@ export function ShapeStage({ shape, canvasRef, onError }: ShapeStageProps) {
       const shapeHalf = zoom * baseHalf
       const padding = 0.5 * minSideDevice - shapeHalf
       const halfShort = shapeHalf / dpr
-      const radius = Math.min(p.radiusPx, Math.max(halfShort, 0)) * dpr
+      // A circle is just the rounded rect with its radius maxed out —
+      // Infinity clamps to halfShort below exactly like any other radius
+      // past the shape's short side would.
+      const radiusPx = p.shapeType === 'circle' ? Infinity : p.radiusPx
+      const radius = Math.min(radiusPx, Math.max(halfShort, 0)) * dpr
 
       const [mx, my] = pointerRef.current
       const uniforms: Uniforms = {

@@ -1,33 +1,77 @@
 'use client'
 
 import { ColorField, NumberField, Section, Slider, Toggle } from './ui-controls'
-import { SHAPE_LIMITS, type ShapeParams } from '@/lib/shape-presets'
+import { cn } from '@/lib/utils'
+import { SHAPE_LIMITS, type ShapeParams, type ShapeType } from '@/lib/shape-presets'
 
 interface ShapeControlPanelProps {
   shape: ShapeParams
   setShape: (p: ShapeParams) => void
 }
 
+const SHAPE_TYPES: { id: ShapeType; label: string }[] = [
+  { id: 'rectangle', label: 'Rectangle' },
+  { id: 'square', label: 'Square' },
+  { id: 'circle', label: 'Circle' },
+]
+
 export function ShapeControlPanel({ shape, setShape }: ShapeControlPanelProps) {
   const maxRadius = Math.min(shape.widthPx, shape.heightPx) / 2
+  const locked = shape.shapeType !== 'rectangle'
+
+  const setShapeType = (shapeType: ShapeType) => {
+    // Square/circle are 1:1 — snap height to width once, right when
+    // switching in, rather than fighting the width field on every edit.
+    const next = shapeType === 'rectangle' ? { shapeType } : { shapeType, heightPx: shape.widthPx }
+    setShape({ ...shape, ...next })
+  }
 
   return (
     <div className="flex flex-col">
       <Section title="Format">
-        <NumberField
-          label="Width"
-          value={shape.widthPx}
-          min={SHAPE_LIMITS.widthPx.min}
-          max={SHAPE_LIMITS.widthPx.max}
-          onChange={(v) => setShape({ ...shape, widthPx: v })}
-        />
-        <NumberField
-          label="Height"
-          value={shape.heightPx}
-          min={SHAPE_LIMITS.heightPx.min}
-          max={SHAPE_LIMITS.heightPx.max}
-          onChange={(v) => setShape({ ...shape, heightPx: v })}
-        />
+        <div className="grid grid-cols-3 gap-1 rounded-full border border-border bg-secondary/40 p-1">
+          {SHAPE_TYPES.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setShapeType(t.id)}
+              className={cn(
+                'rounded-full px-2 py-1 text-[11px] font-medium transition-colors',
+                shape.shapeType === t.id
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        {locked ? (
+          <NumberField
+            label="Size"
+            value={shape.widthPx}
+            min={SHAPE_LIMITS.widthPx.min}
+            max={SHAPE_LIMITS.widthPx.max}
+            onChange={(v) => setShape({ ...shape, widthPx: v, heightPx: v })}
+          />
+        ) : (
+          <>
+            <NumberField
+              label="Width"
+              value={shape.widthPx}
+              min={SHAPE_LIMITS.widthPx.min}
+              max={SHAPE_LIMITS.widthPx.max}
+              onChange={(v) => setShape({ ...shape, widthPx: v })}
+            />
+            <NumberField
+              label="Height"
+              value={shape.heightPx}
+              min={SHAPE_LIMITS.heightPx.min}
+              max={SHAPE_LIMITS.heightPx.max}
+              onChange={(v) => setShape({ ...shape, heightPx: v })}
+            />
+          </>
+        )}
         <Slider
           label="Zoom"
           value={shape.zoom}
@@ -44,15 +88,17 @@ export function ShapeControlPanel({ shape, setShape }: ShapeControlPanelProps) {
       </Section>
 
       <Section title="Style">
-        <Slider
-          label="Corner radius"
-          value={Math.min(shape.radiusPx, maxRadius)}
-          min={0}
-          max={Math.max(maxRadius, 1)}
-          step={1}
-          format={(v) => `${Math.round(v)}px`}
-          onChange={(v) => setShape({ ...shape, radiusPx: v })}
-        />
+        {shape.shapeType !== 'circle' ? (
+          <Slider
+            label="Corner radius"
+            value={Math.min(shape.radiusPx, maxRadius)}
+            min={0}
+            max={Math.max(maxRadius, 1)}
+            step={1}
+            format={(v) => `${Math.round(v)}px`}
+            onChange={(v) => setShape({ ...shape, radiusPx: v })}
+          />
+        ) : null}
         <Toggle label="Bordered" checked={shape.bordered} onChange={(v) => setShape({ ...shape, bordered: v })} />
         {shape.bordered ? (
           <Slider

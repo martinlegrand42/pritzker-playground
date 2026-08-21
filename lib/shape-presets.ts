@@ -1,4 +1,7 @@
+export type ShapeType = 'rectangle' | 'square' | 'circle'
+
 export interface ShapeParams {
+  shapeType: ShapeType
   widthPx: number
   heightPx: number
   bgColor: string
@@ -19,6 +22,7 @@ export const SHAPE_LIMITS = {
 } as const
 
 export const SHAPE_DEFAULT: ShapeParams = {
+  shapeType: 'rectangle',
   widthPx: 480,
   heightPx: 480,
   bgColor: '#f4f3ef',
