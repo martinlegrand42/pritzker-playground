@@ -73,6 +73,29 @@ export function ShapePlayground() {
 
   const ratio = shape.widthPx / shape.heightPx
 
+  // Measured directly (not via CSS aspect-ratio + a width cap) because
+  // that approach breaks down whenever the panel's available height is
+  // the tighter constraint: an auto height computed from aspect-ratio
+  // still gets silently clipped by max-height, unlinking it from width
+  // and quietly turning a square/circle into a rectangle/ellipse.
+  const stageRef = useRef<HTMLDivElement | null>(null)
+  const [stageSize, setStageSize] = useState({ w: 600, h: 600 })
+  useEffect(() => {
+    const el = stageRef.current
+    if (!el) return
+    const ro = new ResizeObserver(([entry]) => {
+      setStageSize({ w: entry.contentRect.width, h: entry.contentRect.height })
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  const fitWidth = Math.min(stageSize.w, stageSize.h * ratio)
+  const fitHeight = fitWidth / ratio
+  const boxScale = Math.min(1, 900 / Math.max(fitWidth, fitHeight, 1))
+  const boxWidth = fitWidth * boxScale
+  const boxHeight = fitHeight * boxScale
+
   return (
     <main className="flex min-h-screen flex-col bg-background lg:h-screen lg:overflow-hidden">
       {/* Header */}
@@ -110,16 +133,15 @@ export function ShapePlayground() {
       {/* Body */}
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         {/* Stage */}
-        <div className="relative flex min-h-[52vh] flex-1 items-center justify-center overflow-hidden p-4 md:p-8 lg:min-h-0">
+        <div
+          ref={stageRef}
+          className="relative flex min-h-[52vh] flex-1 items-center justify-center overflow-hidden p-4 md:p-8 lg:min-h-0"
+        >
           <StageGrid />
 
           <div
-            className="relative z-[1] max-h-full max-w-full overflow-hidden shadow-[0_20px_60px_-24px_rgba(20,30,80,0.35)] ring-1 ring-black/5"
-            style={{
-              aspectRatio: String(ratio),
-              width: ratio >= 1 ? 'min(100%, 900px)' : 'auto',
-              height: ratio >= 1 ? 'auto' : 'min(100%, 640px)',
-            }}
+            className="relative z-[1] overflow-hidden shadow-[0_20px_60px_-24px_rgba(20,30,80,0.35)] ring-1 ring-black/5"
+            style={{ width: boxWidth, height: boxHeight }}
           >
             <ShapeStage shape={shape} canvasRef={canvasRef} onError={setError} />
             {error ? (
