@@ -54,12 +54,12 @@ export const SHAPE_DEFAULT: ShapeParams = {
 // anyone who opens it — independent of whatever (if anything) is already
 // saved in the recipient's own browser.
 export function encodeShapeParams(params: ShapeParams): string {
-  return encodeURIComponent(btoa(JSON.stringify(params)))
+  return btoa(JSON.stringify(params))
 }
 
 export function decodeShapeParams(encoded: string): Partial<ShapeParams> | null {
   try {
-    return JSON.parse(atob(decodeURIComponent(encoded)))
+    return JSON.parse(atob(encoded))
   } catch {
     return null
   }
