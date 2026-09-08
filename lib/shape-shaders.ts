@@ -25,6 +25,7 @@ uniform float uBorderWidth;    // device px
 uniform float uHoverIntensity; // 0..1, eased lens strength
 uniform float uCenterDamp;     // 0..1, how much to cut the lens when hovering deep inside the shape
 uniform float uHoverColorAmount; // 0..1, how far shape color tints toward hover color at its stop
+uniform float uColorBlendSoftness; // 0..1, how gradually shape color melts into hover color
 uniform vec3  uColBg;
 uniform vec3  uColShape;
 uniform vec3  uColHover;       // shows only in the blurred transition band, at its outer edge
@@ -84,7 +85,13 @@ void main() {
   // two-color edge (no visible hover color) once blur shrinks back down
   // to its resting 1px floor.
   float t = clamp(sdf / blur, -1.0, 1.0);
-  float shapeToHover = smoothstep(-1.0, -0.6, t);
+  // The shape-to-hover stop's far edge slides outward as softness goes up,
+  // stretching that transition across more of the band instead of ramping
+  // to full hover color quickly and holding a hard plateau — at 0 it's the
+  // original quick ramp, at 1 it melts almost all the way to where the
+  // hover-to-background stop takes over.
+  float shapeToHoverEdge = mix(-0.6, 0.35, uColorBlendSoftness);
+  float shapeToHover = smoothstep(-1.0, shapeToHoverEdge, t);
   float hoverToBg = smoothstep(0.4, 1.0, t);
 
   // Scaling shapeToHover itself (rather than the mix below it) keeps this

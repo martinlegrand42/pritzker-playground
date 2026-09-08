@@ -102,6 +102,14 @@ export function ShapeControlPanel({ shape, setShape }: ShapeControlPanelProps) {
           onChange={(v) => setShape({ ...shape, hoverColorAmount: v })}
         />
         <Slider
+          label="Color blend softness"
+          value={shape.colorBlendSoftness}
+          min={0}
+          max={1}
+          format={(v) => `${Math.round(v * 100)}%`}
+          onChange={(v) => setShape({ ...shape, colorBlendSoftness: v })}
+        />
+        <Slider
           label="Reduce blur at center"
           value={shape.centerBlurReduction}
           min={0}
