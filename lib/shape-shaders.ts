@@ -25,6 +25,7 @@ uniform float uBorderWidth;    // device px
 uniform float uHoverIntensity; // 0..1, eased lens strength
 uniform vec3  uColBg;
 uniform vec3  uColShape;
+uniform vec3  uColHover;       // shows only in the blurred transition band, at its outer edge
 
 // Rounded-box SDF (Inigo Quilez): negative inside, positive outside.
 float roundedBoxSdf(vec2 p, vec2 halfSize, float radius) {
@@ -51,6 +52,16 @@ void main() {
 
   float alpha = 1.0 - smoothstep(-blur, blur, sdf);
   vec3 col = mix(uColBg, uColShape, alpha);
+
+  // Hover color rides the outer half of that same transition band — sdf
+  // normalized by the current blur radius puts the shape's exact edge at
+  // t=0 and the far side of the blur (fully into the background) at t=1,
+  // so this band only has room to appear once the lens has actually
+  // widened that transition, and sits right at its outer extremity.
+  float t = clamp(sdf / blur, -1.0, 1.0);
+  float glow = smoothstep(-0.3, 0.2, t) * (1.0 - smoothstep(0.2, 1.0, t));
+  col = mix(col, uColHover, glow * uHoverIntensity);
+
   gl_FragColor = vec4(col, 1.0);
 }
 `

@@ -10,6 +10,7 @@ export interface ShapeParams {
   bordered: boolean
   borderWidthPx: number
   hoverIntensity: number
+  hoverColor: string
   zoom: number
 }
 
@@ -38,5 +39,6 @@ export const SHAPE_DEFAULT: ShapeParams = {
   bordered: false,
   borderWidthPx: 10,
   hoverIntensity: 0.6,
+  hoverColor: '#86c3f5',
   zoom: 1,
 }

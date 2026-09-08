@@ -92,6 +92,7 @@ export function ShapeControlPanel({ shape, setShape }: ShapeControlPanelProps) {
           format={(v) => `${Math.round(v * 100)}%`}
           onChange={(v) => setShape({ ...shape, hoverIntensity: v })}
         />
+        <ColorField label="Hover color" value={shape.hoverColor} onChange={(v) => setShape({ ...shape, hoverColor: v })} />
       </Section>
     </div>
   )
