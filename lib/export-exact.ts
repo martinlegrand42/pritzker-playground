@@ -18,7 +18,19 @@ async function loadFFmpeg(assetBaseUrl: string): Promise<FFmpeg> {
   const ffmpeg = new FFmpeg()
   const coreURL = await toBlobURL(`${assetBaseUrl}/ffmpeg/ffmpeg-core.js`, 'text/javascript')
   const wasmURL = await toBlobURL(`${assetBaseUrl}/ffmpeg/ffmpeg-core.wasm`, 'application/wasm')
-  await ffmpeg.load({ coreURL, wasmURL })
+  try {
+    await ffmpeg.load({ coreURL, wasmURL })
+  } finally {
+    // toBlobURL fetches the ~32MB core fresh into a new Blob every call —
+    // the browser's HTTP cache avoids the network cost, but the Blob and its
+    // object URL are only freed by an explicit revoke, not by ffmpeg.load()
+    // returning. Both are fully consumed by the time load() resolves
+    // (imported into the worker and read by the WASM instantiation), so it's
+    // safe to release them here rather than leaving them pinned in memory
+    // for the life of the tab across repeated exports.
+    URL.revokeObjectURL(coreURL)
+    URL.revokeObjectURL(wasmURL)
+  }
   return ffmpeg
 }
 
