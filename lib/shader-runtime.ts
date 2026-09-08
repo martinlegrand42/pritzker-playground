@@ -117,8 +117,12 @@ export function createRenderer(canvas: HTMLCanvasElement, fragSrc: string): Rend
     let height: number
     if (exportWidth) {
       const aspect = (canvas.clientWidth || 1) / (canvas.clientHeight || 1)
-      width = Math.max(1, Math.round(exportWidth))
-      height = Math.max(1, Math.round(exportWidth / aspect))
+      // Video encoders (especially hardware ones) commonly require even
+      // width/height for 4:2:0 chroma subsampling and reject the whole
+      // configuration otherwise — round both to the nearest even number
+      // rather than just whatever the aspect ratio math happens to produce.
+      width = Math.max(2, Math.round(exportWidth / 2) * 2)
+      height = Math.max(2, Math.round(exportWidth / aspect / 2) * 2)
     } else {
       const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR)
       width = Math.max(1, Math.round(canvas.clientWidth * dpr))
