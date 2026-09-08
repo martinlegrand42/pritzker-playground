@@ -4,21 +4,22 @@ import { createRenderer } from './shader-runtime'
 import { AURA_FRAG } from './shaders'
 import { hexToRgb, type AuraParams } from './presets'
 
-// Loaded once and reused across exports, so only the first export in a
-// session pays for the ~32MB WASM download.
-let ffmpegPromise: Promise<FFmpeg> | null = null
-
-function loadFFmpeg(assetBaseUrl: string): Promise<FFmpeg> {
-  if (!ffmpegPromise) {
-    ffmpegPromise = (async () => {
-      const ffmpeg = new FFmpeg()
-      const coreURL = await toBlobURL(`${assetBaseUrl}/ffmpeg/ffmpeg-core.js`, 'text/javascript')
-      const wasmURL = await toBlobURL(`${assetBaseUrl}/ffmpeg/ffmpeg-core.wasm`, 'application/wasm')
-      await ffmpeg.load({ coreURL, wasmURL })
-      return ffmpeg
-    })()
-  }
-  return ffmpegPromise
+// A fresh FFmpeg instance (and worker) is created and fully torn down for
+// every export, rather than reused across exports. WASM linear memory can
+// only grow, never shrink, and ffmpeg's virtual filesystem lives in that
+// memory — so writing this many large frames repeatedly into one long-lived
+// instance keeps growing its heap forever even after deleting the files,
+// eventually exhausting the tab's memory and crashing it. Reusing the
+// instance was meant to save re-downloading the ~32MB core on every export,
+// but the browser's own HTTP cache already does that (this is a plain
+// fetch of a same-origin file); the only repeated cost of a fresh instance
+// is re-initializing the WASM module, which is fast.
+async function loadFFmpeg(assetBaseUrl: string): Promise<FFmpeg> {
+  const ffmpeg = new FFmpeg()
+  const coreURL = await toBlobURL(`${assetBaseUrl}/ffmpeg/ffmpeg-core.js`, 'text/javascript')
+  const wasmURL = await toBlobURL(`${assetBaseUrl}/ffmpeg/ffmpeg-core.wasm`, 'application/wasm')
+  await ffmpeg.load({ coreURL, wasmURL })
+  return ffmpeg
 }
 
 export interface ExactExportResult {
@@ -66,6 +67,16 @@ export async function exportAuraLoopExact(
   canvas.height = height
   const renderer = createRenderer(canvas, AURA_FRAG)
 
+  // Each export creates a brand new WebGL context on a throwaway canvas.
+  // Browsers cap how many can exist at once (commonly 8-16) — past that,
+  // a new context is silently born lost, rendering nothing but the clear
+  // color, which looks exactly like "solid background, no shape". Fail
+  // loudly here instead of producing a silently-wrong video.
+  if (renderer.gl.isContextLost()) {
+    renderer.destroy()
+    throw new Error('WebGL context could not be created (possibly too many contexts open — try reloading the page)')
+  }
+
   const frameCount = Math.max(1, Math.round((durationMs / 1000) * fps))
   const frameName = (i: number) => `frame${String(i).padStart(5, '0')}.png`
 
@@ -95,6 +106,12 @@ export async function exportAuraLoopExact(
         },
         width,
       )
+      if (i === 0) {
+        const glError = renderer.gl.getError()
+        if (glError !== renderer.gl.NO_ERROR) {
+          throw new Error(`WebGL error while rendering (code ${glError}) — try reloading the page`)
+        }
+      }
       const blob = await new Promise<Blob>((resolve, reject) => {
         canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('canvas.toBlob failed'))), 'image/png')
       })
@@ -126,13 +143,17 @@ export async function exportAuraLoopExact(
     // definitely-non-shared Uint8Array first.
     const mp4Blob = new Blob([new Uint8Array(data as Uint8Array)], { type: 'video/mp4' })
 
-    for (let i = 0; i < frameCount; i++) {
-      await ffmpeg.deleteFile(frameName(i)).catch(() => {})
-    }
-    await ffmpeg.deleteFile('out.mp4').catch(() => {})
-
     return { url: URL.createObjectURL(mp4Blob), width, height }
   } finally {
     renderer.destroy()
+    // Explicitly force this throwaway context to release its GPU resources
+    // now rather than whenever GC gets to it — repeated exports in one
+    // session would otherwise pile up contexts toward the browser's limit
+    // (commonly 8-16), after which new ones are silently born lost.
+    renderer.gl.getExtension('WEBGL_lose_context')?.loseContext()
+    // Tear the whole ffmpeg worker/WASM instance down rather than just
+    // deleting its virtual-FS files — WASM memory only grows, so deleting
+    // files doesn't actually reclaim the heap they were written into.
+    ffmpeg.terminate()
   }
 }
