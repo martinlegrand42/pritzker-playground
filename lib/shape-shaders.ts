@@ -64,17 +64,24 @@ void main() {
 
   float blur = max(uHoverIntensity * maxBlur * falloff * centerReduction, 1.0); // 1px floor keeps a clean edge at rest
 
-  float alpha = 1.0 - smoothstep(-blur, blur, sdf);
-  vec3 col = mix(uColBg, uColShape, alpha);
-
-  // Hover color rides the outer half of that same transition band — sdf
-  // normalized by the current blur radius puts the shape's exact edge at
-  // t=0 and the far side of the blur (fully into the background) at t=1,
-  // so this band only has room to appear once the lens has actually
-  // widened that transition, and sits right at its outer extremity.
+  // Three sequential stops — shape, then hover color, then background —
+  // chained so each mix starts from the previous one's result instead of
+  // two independent shape-to-background and color-to-hover blends. Doing
+  // it as two independent blends (an earlier version of this) let the
+  // background show through faintly before the hover color had fully
+  // taken over, since both were being mixed toward at once; chaining
+  // guarantees the hover color is a mandatory waypoint with no gap where
+  // background leaks in early. sdf is normalized by the current blur
+  // radius, so the whole gradient only has room to unfold once the lens
+  // has actually widened that transition, and collapses back to a plain
+  // two-color edge (no visible hover color) once blur shrinks back down
+  // to its resting 1px floor.
   float t = clamp(sdf / blur, -1.0, 1.0);
-  float glow = smoothstep(-0.3, 0.2, t) * (1.0 - smoothstep(0.2, 1.0, t));
-  col = mix(col, uColHover, glow * uHoverIntensity);
+  float shapeToHover = smoothstep(-1.0, -0.4, t);
+  float hoverToBg = smoothstep(-0.1, 1.0, t);
+
+  vec3 col = mix(uColShape, uColHover, shapeToHover);
+  col = mix(col, uColBg, hoverToBg);
 
   gl_FragColor = vec4(col, 1.0);
 }
