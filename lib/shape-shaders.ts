@@ -23,6 +23,7 @@ uniform float uRadius;         // device px, pre-clamped to half the shape's sho
 uniform float uBordered;       // 0 = filled, 1 = outline only
 uniform float uBorderWidth;    // device px
 uniform float uHoverIntensity; // 0..1, eased lens strength
+uniform float uCenterDamp;     // 0..1, how much to cut the lens when hovering deep inside the shape
 uniform vec3  uColBg;
 uniform vec3  uColShape;
 uniform vec3  uColHover;       // shows only in the blurred transition band, at its outer edge
@@ -48,7 +49,20 @@ void main() {
   float lensRadius = 0.5 * minSide;
   float falloff = 1.0 - smoothstep(0.0, lensRadius, length(gl_FragCoord.xy - uMouse));
   float maxBlur = 0.32 * minSide;
-  float blur = max(uHoverIntensity * maxBlur * falloff, 1.0); // 1px floor keeps a clean edge at rest
+
+  // How deep the cursor itself currently sits inside the shape (not this
+  // fragment) — evaluate the same SDF at the mouse position so hovering
+  // dead center can be told apart from hovering near the rim, and damp
+  // the lens down as the cursor moves deeper inside.
+  vec2 mouseP = uMouse - 0.5 * uResolution;
+  float mouseSdf = roundedBoxSdf(mouseP, halfSize, uRadius);
+  if (uBordered > 0.5) {
+    mouseSdf = abs(mouseSdf) - 0.5 * uBorderWidth;
+  }
+  float centerDepth = clamp(-mouseSdf / (0.5 * minSide), 0.0, 1.0);
+  float centerReduction = 1.0 - uCenterDamp * centerDepth;
+
+  float blur = max(uHoverIntensity * maxBlur * falloff * centerReduction, 1.0); // 1px floor keeps a clean edge at rest
 
   float alpha = 1.0 - smoothstep(-blur, blur, sdf);
   vec3 col = mix(uColBg, uColShape, alpha);

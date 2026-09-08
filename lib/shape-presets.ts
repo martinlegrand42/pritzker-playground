@@ -11,6 +11,7 @@ export interface ShapeParams {
   borderWidthPx: number
   hoverIntensity: number
   hoverColor: string
+  centerBlurReduction: number
   zoom: number
 }
 
@@ -33,12 +34,13 @@ export const SHAPE_TYPE_SIZE: Record<ShapeType, { widthPx: number; heightPx: num
 export const SHAPE_DEFAULT: ShapeParams = {
   shapeType: 'rectangle',
   ...SHAPE_TYPE_SIZE.rectangle,
-  bgColor: '#f4f3ef',
-  shapeColor: '#19188a',
+  bgColor: '#fafaff',
+  shapeColor: '#0031a7',
   radiusPx: 48,
   bordered: false,
   borderWidthPx: 10,
   hoverIntensity: 0.6,
-  hoverColor: '#86c3f5',
+  hoverColor: '#327fef',
+  centerBlurReduction: 0.5,
   zoom: 1,
 }
