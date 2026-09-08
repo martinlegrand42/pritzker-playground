@@ -44,12 +44,15 @@ void main() {
   }
 
   // Lens: a circular falloff centered on the cursor, sized relative to the
-  // canvas so it scales with the shape rather than being a fixed pixel
-  // radius. Blur radius peaks at the cursor and eases to zero by its rim.
-  float minSide = min(uResolution.x, uResolution.y);
-  float lensRadius = 0.5 * minSide;
+  // shape's own current half-extent (already shrunk by zoom via uPadding)
+  // rather than the canvas — so dezooming the shape scales the lens and
+  // blur down right along with it instead of leaving a canvas-sized lens
+  // looming over an increasingly small shape. Blur radius peaks at the
+  // cursor and eases to zero by its rim.
+  float shapeSize = 2.0 * min(halfSize.x, halfSize.y);
+  float lensRadius = 0.5 * shapeSize;
   float falloff = 1.0 - smoothstep(0.0, lensRadius, length(gl_FragCoord.xy - uMouse));
-  float maxBlur = 0.32 * minSide;
+  float maxBlur = 0.32 * shapeSize;
 
   // How deep the cursor itself currently sits inside the shape (not this
   // fragment) — evaluate the same SDF at the mouse position so hovering
@@ -60,7 +63,7 @@ void main() {
   if (uBordered > 0.5) {
     mouseSdf = abs(mouseSdf) - 0.5 * uBorderWidth;
   }
-  float centerDepth = clamp(-mouseSdf / (0.5 * minSide), 0.0, 1.0);
+  float centerDepth = clamp(-mouseSdf / (0.5 * shapeSize), 0.0, 1.0);
   float centerReduction = 1.0 - uCenterDamp * centerDepth;
 
   float blur = max(uHoverIntensity * maxBlur * falloff * centerReduction, 1.0); // 1px floor keeps a clean edge at rest
