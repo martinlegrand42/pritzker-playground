@@ -43,6 +43,6 @@ export const SHAPE_DEFAULT: ShapeParams = {
   hoverIntensity: 0.6,
   hoverColor: '#327fef',
   hoverColorAmount: 1,
-  centerBlurReduction: 0.5,
+  centerBlurReduction: 1,
   zoom: 1,
 }
