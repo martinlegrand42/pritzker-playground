@@ -2,7 +2,8 @@
 
 A generative playground for experimenting with brand motion. Tune a live WebGL
 shader with bounded controls, then export a still (PNG) or a looping clip
-(WebM) — no code editing, so there's no way to break it.
+(MP4, falling back to WebM where the browser can't record MP4) — no code
+editing, so there's no way to break it.
 
 ## Aura
 
@@ -32,8 +33,8 @@ GLSL fragment shader (`lib/shaders.ts`, run through `lib/shader-runtime.ts`).
 Settings (palette, sliders, toggles) persist to `localStorage`
 (`lib/persist.ts`) so a custom look survives a reload. Controls include
 "Generate" for a random variation and "Reset" back to defaults, plus an
-export toolbar (PNG still / 6s WebM loop via `canvas.captureStream` +
-`MediaRecorder`).
+export toolbar (PNG still / 6s MP4 loop, falling back to WebM, via
+`canvas.captureStream` + `MediaRecorder`).
 
 ## Getting started
 
