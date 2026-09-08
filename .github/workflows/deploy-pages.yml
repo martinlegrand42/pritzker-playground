@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - claude/pritzker-generative-playground-uu8iq6
   workflow_dispatch:
 
 permissions:
