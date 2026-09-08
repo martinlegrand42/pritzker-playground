@@ -7,29 +7,17 @@ function triggerDownload(url: string, filename: string) {
   a.remove()
 }
 
-// Prefer mp4 (H.264) since that's what people actually want to share/edit
-// with; fall back to webm (VP9/VP8) on browsers that can't record mp4
-// directly. H.264 also has hardware-encoder resolution ceilings (its
-// "level" system) that VP9/VP8 don't share, so this list matters even when
-// mp4 itself is supported — a high resolution can exceed the H.264 level
-// the hardware supports while still fitting fine in webm.
-const MIME_CANDIDATES = [
-  'video/mp4;codecs=avc1',
-  'video/mp4;codecs=h264',
-  'video/mp4',
-  'video/webm;codecs=vp9',
-  'video/webm;codecs=vp8',
-  'video/webm',
-]
+// mp4 (H.264) is required — webm is only ever used as an absolute last
+// resort (see `allowWebm` below), not swapped in automatically just
+// because a given resolution doesn't fit. Within mp4 itself, try a couple
+// of codec-string variants since a bare "avc1"/"h264" is sometimes
+// accepted where the other isn't.
+const MP4_CANDIDATES = ['video/mp4;codecs=avc1', 'video/mp4;codecs=h264', 'video/mp4']
+const WEBM_CANDIDATES = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
 
-function supportedMimeTypes() {
-  const supported = MIME_CANDIDATES.filter(
-    (candidate) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(candidate),
-  )
-  // isTypeSupported() doesn't know about a resolution we haven't chosen yet,
-  // so even with nothing on the list, let the browser try its own default
-  // rather than giving up before even attempting to record.
-  return supported.length > 0 ? supported : ['']
+function supportedMimeTypes(allowWebm: boolean) {
+  const pool = allowWebm ? [...MP4_CANDIDATES, ...WEBM_CANDIDATES] : MP4_CANDIDATES
+  return pool.filter((candidate) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(candidate))
 }
 
 function extForMimeType(mimeType: string) {
@@ -51,19 +39,20 @@ export function downloadVideo(url: string, filenameBase: string, mimeType: strin
 }
 
 /**
- * Records `durationMs` of the canvas, trying mp4 (H.264) first and falling
- * back through webm (VP9/VP8) at the SAME resolution before giving up —
- * a resolution can exceed what H.264's hardware encoder supports while
- * still fitting fine in webm, so the container/codec is what flexes here,
- * not the size of the recording. `onDone` receives a blob URL to download
- * plus the mime type actually recorded, or null/'' plus a `reason`
- * describing exactly what went wrong if nothing worked.
+ * Records `durationMs` of the canvas as mp4 (H.264), trying a couple of
+ * codec-string variants before giving up on that. Only when `allowWebm` is
+ * true does it also try webm (VP9/VP8) as an absolute last resort — mp4 is
+ * a hard requirement otherwise, even if that means this resolution doesn't
+ * work at all and the caller needs to retry smaller. `onDone` receives a
+ * blob URL to download plus the mime type actually recorded, or null/''
+ * plus a `reason` describing exactly what went wrong if nothing worked.
  */
 export function recordLoop(
   canvas: HTMLCanvasElement,
   durationMs: number,
   onProgress: (t: number) => void,
   onDone: (url: string | null, mimeType: string, reason?: string) => void,
+  allowWebm = false,
 ): { stop: () => void } {
   if (typeof MediaRecorder === 'undefined') {
     onDone(null, '', 'MediaRecorder is not available in this browser')
@@ -75,7 +64,7 @@ export function recordLoop(
   }
 
   const stream = canvas.captureStream(30)
-  const candidates = supportedMimeTypes()
+  const candidates = supportedMimeTypes(allowWebm)
 
   let stopped = false
   let externallyStopped = false

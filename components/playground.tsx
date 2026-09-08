@@ -86,11 +86,11 @@ export function Playground() {
     setToast('Still frame exported (.png)')
   }
 
-  // Some encoders (particularly hardware ones) reject very large resolutions
-  // outright rather than just this browser lacking mp4/webm support at all —
-  // reported as e.g. "the given encoder configuration is not supported by
-  // the encoder". Rather than just failing, step down through smaller
-  // widths until one the encoder actually accepts.
+  // H.264's hardware encoder can reject a large resolution outright — e.g.
+  // "the given encoder configuration is not supported by the encoder" — even
+  // though mp4 itself is supported. mp4 must stay mp4, so what steps down
+  // here is the resolution, not the format; only at the smallest width does
+  // recordLoop get permission to fall back to webm as a last resort.
   const EXPORT_WIDTHS = [4000, 2560, 1920, 1280]
 
   const attemptExportLoop = (canvas: HTMLCanvasElement, widthIndex: number) => {
@@ -101,6 +101,7 @@ export function Playground() {
     // Wait for that before starting captureStream, so the recording starts
     // at the export resolution from frame one instead of resizing partway
     // through (which some encoders handle poorly).
+    const isLastWidth = widthIndex === EXPORT_WIDTHS.length - 1
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         recordHandle.current = recordLoop(
@@ -110,7 +111,7 @@ export function Playground() {
           (url, mimeType, reason) => {
             recordHandle.current = null
             if (!url) {
-              if (widthIndex + 1 < EXPORT_WIDTHS.length) {
+              if (!isLastWidth) {
                 attemptExportLoop(canvas, widthIndex + 1)
                 return
               }
@@ -129,6 +130,10 @@ export function Playground() {
                 : `6s loop exported (.webm — mp4 unsupported here, ${res})`,
             )
           },
+          // mp4 is required at every width except the last — only once
+          // every resolution has failed to produce mp4 is webm allowed,
+          // as an absolute last resort rather than a routine substitute.
+          isLastWidth,
         )
       })
     })
