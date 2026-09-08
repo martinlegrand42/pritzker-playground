@@ -82,15 +82,15 @@ export function ShapePlayground() {
       canvas,
       6000,
       (t) => setProgress(t),
-      (url) => {
+      (url, mimeType) => {
         setRecording(false)
         recordHandle.current = null
         if (!url) {
           setToast('Video recording is not supported in this browser')
           return
         }
-        downloadVideo(url, `pritzker-shape-loop-${Date.now()}`)
-        setToast('6s loop exported (.webm)')
+        downloadVideo(url, `pritzker-shape-loop-${Date.now()}`, mimeType)
+        setToast(mimeType.startsWith('video/mp4') ? '6s loop exported (.mp4)' : '6s loop exported (.webm — mp4 unsupported here)')
       },
     )
   }
