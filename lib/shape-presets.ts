@@ -11,6 +11,7 @@ export interface ShapeParams {
   borderWidthPx: number
   hoverIntensity: number
   hoverColor: string
+  hoverColorAmount: number
   centerBlurReduction: number
   zoom: number
 }
@@ -41,6 +42,7 @@ export const SHAPE_DEFAULT: ShapeParams = {
   borderWidthPx: 10,
   hoverIntensity: 0.6,
   hoverColor: '#327fef',
+  hoverColorAmount: 1,
   centerBlurReduction: 0.5,
   zoom: 1,
 }

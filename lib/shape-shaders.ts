@@ -24,6 +24,7 @@ uniform float uBordered;       // 0 = filled, 1 = outline only
 uniform float uBorderWidth;    // device px
 uniform float uHoverIntensity; // 0..1, eased lens strength
 uniform float uCenterDamp;     // 0..1, how much to cut the lens when hovering deep inside the shape
+uniform float uHoverColorAmount; // 0..1, how far shape color tints toward hover color at its stop
 uniform vec3  uColBg;
 uniform vec3  uColShape;
 uniform vec3  uColHover;       // shows only in the blurred transition band, at its outer edge
@@ -80,7 +81,12 @@ void main() {
   float shapeToHover = smoothstep(-1.0, -0.4, t);
   float hoverToBg = smoothstep(-0.1, 1.0, t);
 
-  vec3 col = mix(uColShape, uColHover, shapeToHover);
+  // Scaling shapeToHover itself (rather than the mix below it) keeps this
+  // leak-free at any amount: at 0 the shape simply never tints toward
+  // hover color and this stage is a no-op, at 1 it's the full stop above
+  // — and the still-later hoverToBg mix always starts from whatever this
+  // produced, so there's never a point where raw background reappears.
+  vec3 col = mix(uColShape, uColHover, shapeToHover * uHoverColorAmount);
   col = mix(col, uColBg, hoverToBg);
 
   gl_FragColor = vec4(col, 1.0);

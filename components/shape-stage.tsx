@@ -88,6 +88,7 @@ export function ShapeStage({ shape, canvasRef, onError }: ShapeStageProps) {
         uBorderWidth: p.borderWidthPx * dpr,
         uHoverIntensity: p.hoverIntensity * hoverRef.current,
         uCenterDamp: p.centerBlurReduction,
+        uHoverColorAmount: p.hoverColorAmount,
         uColBg: hexToRgb(p.bgColor),
         uColShape: hexToRgb(p.shapeColor),
         uColHover: hexToRgb(p.hoverColor),

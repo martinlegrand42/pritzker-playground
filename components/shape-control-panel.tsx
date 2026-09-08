@@ -94,6 +94,14 @@ export function ShapeControlPanel({ shape, setShape }: ShapeControlPanelProps) {
         />
         <ColorField label="Hover color" value={shape.hoverColor} onChange={(v) => setShape({ ...shape, hoverColor: v })} />
         <Slider
+          label="Hover color amount"
+          value={shape.hoverColorAmount}
+          min={0}
+          max={1}
+          format={(v) => `${Math.round(v * 100)}%`}
+          onChange={(v) => setShape({ ...shape, hoverColorAmount: v })}
+        />
+        <Slider
           label="Reduce blur at center"
           value={shape.centerBlurReduction}
           min={0}
