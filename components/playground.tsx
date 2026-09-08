@@ -108,7 +108,7 @@ export function Playground() {
           canvas,
           6000,
           (t) => setProgress(t),
-          (url, mimeType, reason) => {
+          (url, mimeType, reason, actualSize) => {
             recordHandle.current = null
             if (!url) {
               if (!isLastWidth) {
@@ -123,7 +123,10 @@ export function Playground() {
             setRecording(false)
             setExportWidth(undefined)
             downloadVideo(url, `pritzker-aura-loop-${Date.now()}`, mimeType)
-            const res = `${EXPORT_WIDTHS[widthIndex]}px wide`
+            // Report what the file actually decodes to, not what we asked
+            // for — some encoders silently clamp resolution rather than
+            // erroring, and a wrong claim is worse than an honest one.
+            const res = actualSize ? `${actualSize.width}x${actualSize.height}` : `~${EXPORT_WIDTHS[widthIndex]}px wide (unverified)`
             setToast(
               mimeType.startsWith('video/mp4')
                 ? `6s loop exported (.mp4, ${res})`

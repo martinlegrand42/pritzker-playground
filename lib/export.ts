@@ -24,6 +24,26 @@ function extForMimeType(mimeType: string) {
   return mimeType.startsWith('video/mp4') ? 'mp4' : 'webm'
 }
 
+// The requested canvas resolution isn't necessarily what actually ends up
+// in the file — some hardware encoders silently clamp to whatever they
+// support instead of erroring out. Read the real dimensions back from the
+// encoded video itself rather than trusting what we asked for.
+function readVideoDimensions(blob: Blob): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const video = document.createElement('video')
+    video.preload = 'metadata'
+    video.muted = true
+    const url = URL.createObjectURL(blob)
+    video.src = url
+    const finish = (result: { width: number; height: number } | null) => {
+      URL.revokeObjectURL(url)
+      resolve(result)
+    }
+    video.onloadedmetadata = () => finish({ width: video.videoWidth, height: video.videoHeight })
+    video.onerror = () => finish(null)
+  })
+}
+
 export function exportPng(canvas: HTMLCanvasElement, filenameBase: string) {
   canvas.toBlob((blob) => {
     if (!blob) return
@@ -44,14 +64,17 @@ export function downloadVideo(url: string, filenameBase: string, mimeType: strin
  * true does it also try webm (VP9/VP8) as an absolute last resort — mp4 is
  * a hard requirement otherwise, even if that means this resolution doesn't
  * work at all and the caller needs to retry smaller. `onDone` receives a
- * blob URL to download plus the mime type actually recorded, or null/''
- * plus a `reason` describing exactly what went wrong if nothing worked.
+ * blob URL to download, the mime type actually recorded, and the video's
+ * real dimensions as decoded back from the file itself (not just the
+ * canvas size we requested, since some encoders silently clamp resolution
+ * rather than erroring) — or null/'' plus a `reason` describing exactly
+ * what went wrong if nothing worked.
  */
 export function recordLoop(
   canvas: HTMLCanvasElement,
   durationMs: number,
   onProgress: (t: number) => void,
-  onDone: (url: string | null, mimeType: string, reason?: string) => void,
+  onDone: (url: string | null, mimeType: string, reason?: string, actualSize?: { width: number; height: number }) => void,
   allowWebm = false,
 ): { stop: () => void } {
   if (typeof MediaRecorder === 'undefined') {
@@ -110,7 +133,10 @@ export function recordLoop(
       }
       stream.getTracks().forEach((track) => track.stop())
       const blobType = mimeType || 'video/webm'
-      onDone(URL.createObjectURL(new Blob(chunks, { type: blobType })), blobType)
+      const blob = new Blob(chunks, { type: blobType })
+      readVideoDimensions(blob).then((actualSize) => {
+        onDone(URL.createObjectURL(blob), blobType, undefined, actualSize || undefined)
+      })
     }
 
     activeRecorder = recorder
