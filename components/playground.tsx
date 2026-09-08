@@ -90,12 +90,12 @@ export function Playground() {
     if (!canvas || recording) return
     setRecording(true)
     setProgress(0)
-    // Bumping `recording` doubles the canvas's render resolution via
-    // exportScale below, but that only takes effect once React re-renders
-    // Stage and its own rAF loop resizes the canvas — a couple of frames
-    // away. Wait for that before starting captureStream, so the recording
-    // starts at the doubled resolution from frame one instead of resizing
-    // partway through (which some encoders handle poorly).
+    // Bumping `recording` switches the canvas to a fixed 4000px-wide render
+    // via exportWidth below, but that only takes effect once React
+    // re-renders Stage and its own rAF loop resizes the canvas — a couple
+    // of frames away. Wait for that before starting captureStream, so the
+    // recording starts at the export resolution from frame one instead of
+    // resizing partway through (which some encoders handle poorly).
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         recordHandle.current = recordLoop(
@@ -180,7 +180,7 @@ export function Playground() {
                 : { width: '100%', height: '100%' }
             }
           >
-            <Stage aura={aura} canvasRef={canvasRef} onError={setError} exportScale={recording ? 2 : 1} />
+            <Stage aura={aura} canvasRef={canvasRef} onError={setError} exportWidth={recording ? 4000 : undefined} />
             {error ? (
               <div className="absolute inset-0 flex items-center justify-center bg-secondary/95 p-6 text-center text-sm text-muted-foreground">
                 {error}

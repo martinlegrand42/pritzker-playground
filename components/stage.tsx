@@ -9,22 +9,23 @@ interface StageProps {
   aura: AuraParams
   canvasRef: React.RefObject<HTMLCanvasElement | null>
   onError?: (message: string) => void
-  // Extra resolution multiplier on top of the device pixel ratio — bumped
-  // while exporting so the recorded video is sharper than the on-screen
-  // canvas, without changing what's displayed.
-  exportScale?: number
+  // Fixed pixel width to render at instead of the normal device-pixel-ratio
+  // size — set while exporting so the recorded video is a specific
+  // resolution regardless of the on-screen canvas size, without changing
+  // what's displayed.
+  exportWidth?: number
 }
 
-export function Stage({ aura, canvasRef, onError, exportScale = 1 }: StageProps) {
+export function Stage({ aura, canvasRef, onError, exportWidth }: StageProps) {
   // Keep latest params in a ref so the render loop reads fresh values
   // without tearing down WebGL on every slider change.
   const auraRef = useRef(aura)
-  const exportScaleRef = useRef(exportScale)
+  const exportWidthRef = useRef(exportWidth)
   // Deliberate "latest ref" sync: written during render, only ever read
   // later from the rAF loop/event handlers below — never read here.
   /* eslint-disable react-hooks/refs */
   auraRef.current = aura
-  exportScaleRef.current = exportScale
+  exportWidthRef.current = exportWidth
   /* eslint-enable react-hooks/refs */
 
   const pointerRef = useRef<[number, number]>([0.5, 0.5])
@@ -128,7 +129,7 @@ export function Stage({ aura, canvasRef, onError, exportScale = 1 }: StageProps)
         uColBg: hexToRgb(p.colBg),
       }
 
-      if (renderer) renderer.render(uniforms, exportScaleRef.current)
+      if (renderer) renderer.render(uniforms, exportWidthRef.current)
       raf = requestAnimationFrame(frame)
     }
 
