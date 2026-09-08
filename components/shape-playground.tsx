@@ -1,13 +1,15 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Clapperboard, Download, ImageDown, RotateCcw } from 'lucide-react'
+import { Clapperboard, Download, ImageDown, Link2, RotateCcw } from 'lucide-react'
 import { ShapeStage } from './shape-stage'
 import { ShapeControlPanel } from './shape-control-panel'
 import { StudioNav } from './studio-nav'
 import { exportPng, recordLoop, downloadVideo } from '@/lib/export'
 import { loadPersisted, savePersisted } from '@/lib/persist'
-import { SHAPE_DEFAULT, type ShapeParams } from '@/lib/shape-presets'
+import { SHAPE_DEFAULT, encodeShapeParams, decodeShapeParams, type ShapeParams } from '@/lib/shape-presets'
+
+const SHARE_PARAM = 's'
 
 // Bumped whenever a default value changes meaningfully — every prior
 // change saved the *entire* params blob on any edit, including fields
@@ -27,8 +29,17 @@ export function ShapePlayground() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const recordHandle = useRef<{ stop: () => void } | null>(null)
 
+  // A share link's own params take priority over whatever's already saved
+  // in this browser, so opening someone else's URL always reproduces
+  // their exact look rather than silently keeping your own local one.
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
+    const encoded = new URLSearchParams(window.location.search).get(SHARE_PARAM)
+    const fromUrl = encoded ? decodeShapeParams(encoded) : null
+    if (fromUrl) {
+      setShapeState((p) => ({ ...p, ...fromUrl }))
+      return
+    }
     const saved = loadPersisted<ShapeParams>(STORAGE_KEY)
     if (saved) setShapeState((p) => ({ ...p, ...saved }))
   }, [])
@@ -37,6 +48,14 @@ export function ShapePlayground() {
   const setShape = (next: ShapeParams) => {
     setShapeState(next)
     savePersisted<ShapeParams>(STORAGE_KEY, next)
+    const url = new URL(window.location.href)
+    url.searchParams.set(SHARE_PARAM, encodeShapeParams(next))
+    window.history.replaceState(null, '', url)
+  }
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(window.location.href)
+    setToast('Link copied — it reproduces this exact look')
   }
 
   useEffect(() => {
@@ -121,6 +140,7 @@ export function ShapePlayground() {
 
         <div className="flex items-center gap-1.5">
           <ToolButton onClick={handleReset} icon={<RotateCcw className="h-4 w-4" />} label="Reset" hideLabelOnMobile />
+          <ToolButton onClick={handleCopyLink} icon={<Link2 className="h-4 w-4" />} label="Copy link" hideLabelOnMobile />
           <div className="mx-1 hidden h-5 w-px bg-border sm:block" />
           <ToolButton onClick={handleExportPng} icon={<ImageDown className="h-4 w-4" />} label="PNG" hideLabelOnMobile />
           <button

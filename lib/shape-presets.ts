@@ -48,3 +48,19 @@ export const SHAPE_DEFAULT: ShapeParams = {
   centerBlurReduction: 1,
   zoom: 1,
 }
+
+// Round-trips the full params blob through a URL-safe query value, so a
+// shared link reproduces exactly what its sender had configured for
+// anyone who opens it — independent of whatever (if anything) is already
+// saved in the recipient's own browser.
+export function encodeShapeParams(params: ShapeParams): string {
+  return encodeURIComponent(btoa(JSON.stringify(params)))
+}
+
+export function decodeShapeParams(encoded: string): Partial<ShapeParams> | null {
+  try {
+    return JSON.parse(atob(decodeURIComponent(encoded)))
+  } catch {
+    return null
+  }
+}
