@@ -6,8 +6,8 @@ export type Uniforms = Record<string, UniformValue>
 export interface Renderer {
   gl: WebGLRenderingContext
   canvas: HTMLCanvasElement
-  render: (uniforms: Uniforms, scale?: number) => void
-  resize: (scale?: number) => { width: number; height: number }
+  render: (uniforms: Uniforms, exportWidth?: number) => void
+  resize: (exportWidth?: number) => { width: number; height: number }
   destroy: () => void
 }
 
@@ -108,13 +108,26 @@ export function createRenderer(canvas: HTMLCanvasElement, fragSrc: string): Rend
     return locCache.get(name) ?? null
   }
 
-  // `scale` is an extra multiplier on top of the device pixel ratio, for
-  // rendering at a higher resolution than the screen needs — e.g. exporting
-  // a sharper video than what's actually displayed on screen.
-  function resize(scale = 1) {
-    const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR) * scale
-    const width = Math.max(1, Math.round(canvas.clientWidth * dpr))
-    const height = Math.max(1, Math.round(canvas.clientHeight * dpr))
+  // `exportWidth`, when given, renders at that exact pixel width (height
+  // following the on-screen box's current aspect ratio) instead of the
+  // normal device-pixel-ratio-based size — for exporting a fixed-resolution
+  // video regardless of what the screen actually needs.
+  function resize(exportWidth?: number) {
+    let width: number
+    let height: number
+    if (exportWidth) {
+      const aspect = (canvas.clientWidth || 1) / (canvas.clientHeight || 1)
+      // Video encoders (especially hardware ones) commonly require even
+      // width/height for 4:2:0 chroma subsampling and reject the whole
+      // configuration otherwise — round both to the nearest even number
+      // rather than just whatever the aspect ratio math happens to produce.
+      width = Math.max(2, Math.round(exportWidth / 2) * 2)
+      height = Math.max(2, Math.round(exportWidth / aspect / 2) * 2)
+    } else {
+      const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR)
+      width = Math.max(1, Math.round(canvas.clientWidth * dpr))
+      height = Math.max(1, Math.round(canvas.clientHeight * dpr))
+    }
     if (canvas.width !== width || canvas.height !== height) {
       canvas.width = width
       canvas.height = height
@@ -123,8 +136,8 @@ export function createRenderer(canvas: HTMLCanvasElement, fragSrc: string): Rend
     return { width, height }
   }
 
-  function render(uniforms: Uniforms, scale = 1) {
-    const { width, height } = resize(scale)
+  function render(uniforms: Uniforms, exportWidth?: number) {
+    const { width, height } = resize(exportWidth)
     gl.useProgram(program)
 
     // resolution is always available
