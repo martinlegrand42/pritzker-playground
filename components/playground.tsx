@@ -103,11 +103,11 @@ export function Playground() {
           canvas,
           6000,
           (t) => setProgress(t),
-          (url, mimeType) => {
+          (url, mimeType, reason) => {
             setRecording(false)
             recordHandle.current = null
             if (!url) {
-              setToast('Video recording is not supported in this browser')
+              setToast(reason || 'Video recording is not supported in this browser')
               return
             }
             downloadVideo(url, `pritzker-aura-loop-${Date.now()}`, mimeType)
