@@ -47,18 +47,22 @@ export function downloadVideo(url: string, filenameBase: string, mimeType: strin
 /**
  * Records `durationMs` of the canvas as an mp4 clip (falling back to webm on
  * browsers that can't record mp4 directly). `onDone` receives a blob URL to
- * download plus the mime type actually recorded, or null/'' if recording
- * isn't supported/produced nothing (e.g. captureStream/MediaRecorder
- * missing, or stopped too early).
+ * download plus the mime type actually recorded, or null/'' plus a `reason`
+ * describing exactly what went wrong if recording isn't supported/produced
+ * nothing.
  */
 export function recordLoop(
   canvas: HTMLCanvasElement,
   durationMs: number,
   onProgress: (t: number) => void,
-  onDone: (url: string | null, mimeType: string) => void,
+  onDone: (url: string | null, mimeType: string, reason?: string) => void,
 ): { stop: () => void } {
-  if (typeof MediaRecorder === 'undefined' || typeof canvas.captureStream !== 'function') {
-    onDone(null, '')
+  if (typeof MediaRecorder === 'undefined') {
+    onDone(null, '', 'MediaRecorder is not available in this browser')
+    return { stop: () => {} }
+  }
+  if (typeof canvas.captureStream !== 'function') {
+    onDone(null, '', 'canvas.captureStream is not available in this browser')
     return { stop: () => {} }
   }
 
@@ -67,23 +71,28 @@ export function recordLoop(
   let recorder: MediaRecorder
   try {
     recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
-  } catch {
+  } catch (err) {
     stream.getTracks().forEach((track) => track.stop())
-    onDone(null, '')
+    onDone(null, '', `MediaRecorder failed to start: ${err instanceof Error ? err.message : String(err)}`)
     return { stop: () => {} }
   }
 
   const chunks: BlobPart[] = []
   let stopped = false
   let raf = 0
+  let recorderError: string | undefined
 
   recorder.ondataavailable = (e) => {
     if (e.data.size > 0) chunks.push(e.data)
   }
+  recorder.onerror = (e) => {
+    const error = (e as { error?: unknown }).error
+    recorderError = `MediaRecorder error: ${error instanceof Error ? error.message : String(error)}`
+  }
   recorder.onstop = () => {
     stream.getTracks().forEach((track) => track.stop())
     if (chunks.length === 0) {
-      onDone(null, '')
+      onDone(null, '', recorderError || 'Recording produced no video data')
       return
     }
     const blobType = mimeType || 'video/webm'
