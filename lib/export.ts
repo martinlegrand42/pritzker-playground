@@ -8,13 +8,26 @@ function triggerDownload(url: string, filename: string) {
 }
 
 function pickMimeType() {
-  const candidates = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
+  // Prefer mp4 (H.264) since that's what people actually want to share/edit
+  // with; fall back to webm on browsers that can't record mp4 directly.
+  const candidates = [
+    'video/mp4;codecs=avc1',
+    'video/mp4;codecs=h264',
+    'video/mp4',
+    'video/webm;codecs=vp9',
+    'video/webm;codecs=vp8',
+    'video/webm',
+  ]
   for (const candidate of candidates) {
     if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(candidate)) {
       return candidate
     }
   }
   return ''
+}
+
+function extForMimeType(mimeType: string) {
+  return mimeType.startsWith('video/mp4') ? 'mp4' : 'webm'
 }
 
 export function exportPng(canvas: HTMLCanvasElement, filenameBase: string) {
@@ -26,24 +39,26 @@ export function exportPng(canvas: HTMLCanvasElement, filenameBase: string) {
   }, 'image/png')
 }
 
-export function downloadVideo(url: string, filenameBase: string) {
-  triggerDownload(url, `${filenameBase}.webm`)
+export function downloadVideo(url: string, filenameBase: string, mimeType: string) {
+  triggerDownload(url, `${filenameBase}.${extForMimeType(mimeType)}`)
   URL.revokeObjectURL(url)
 }
 
 /**
- * Records `durationMs` of the canvas as a webm clip. `onDone` receives a
- * blob URL to download, or null if recording isn't supported/produced
- * nothing (e.g. captureStream/MediaRecorder missing, or stopped too early).
+ * Records `durationMs` of the canvas as an mp4 clip (falling back to webm on
+ * browsers that can't record mp4 directly). `onDone` receives a blob URL to
+ * download plus the mime type actually recorded, or null/'' if recording
+ * isn't supported/produced nothing (e.g. captureStream/MediaRecorder
+ * missing, or stopped too early).
  */
 export function recordLoop(
   canvas: HTMLCanvasElement,
   durationMs: number,
   onProgress: (t: number) => void,
-  onDone: (url: string | null) => void,
+  onDone: (url: string | null, mimeType: string) => void,
 ): { stop: () => void } {
   if (typeof MediaRecorder === 'undefined' || typeof canvas.captureStream !== 'function') {
-    onDone(null)
+    onDone(null, '')
     return { stop: () => {} }
   }
 
@@ -54,7 +69,7 @@ export function recordLoop(
     recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
   } catch {
     stream.getTracks().forEach((track) => track.stop())
-    onDone(null)
+    onDone(null, '')
     return { stop: () => {} }
   }
 
@@ -68,10 +83,11 @@ export function recordLoop(
   recorder.onstop = () => {
     stream.getTracks().forEach((track) => track.stop())
     if (chunks.length === 0) {
-      onDone(null)
+      onDone(null, '')
       return
     }
-    onDone(URL.createObjectURL(new Blob(chunks, { type: mimeType || 'video/webm' })))
+    const blobType = mimeType || 'video/webm'
+    onDone(URL.createObjectURL(new Blob(chunks, { type: blobType })), blobType)
   }
 
   recorder.start()

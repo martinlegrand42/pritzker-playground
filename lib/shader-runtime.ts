@@ -6,8 +6,8 @@ export type Uniforms = Record<string, UniformValue>
 export interface Renderer {
   gl: WebGLRenderingContext
   canvas: HTMLCanvasElement
-  render: (uniforms: Uniforms) => void
-  resize: () => { width: number; height: number }
+  render: (uniforms: Uniforms, scale?: number) => void
+  resize: (scale?: number) => { width: number; height: number }
   destroy: () => void
 }
 
@@ -108,8 +108,11 @@ export function createRenderer(canvas: HTMLCanvasElement, fragSrc: string): Rend
     return locCache.get(name) ?? null
   }
 
-  function resize() {
-    const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR)
+  // `scale` is an extra multiplier on top of the device pixel ratio, for
+  // rendering at a higher resolution than the screen needs — e.g. exporting
+  // a sharper video than what's actually displayed on screen.
+  function resize(scale = 1) {
+    const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR) * scale
     const width = Math.max(1, Math.round(canvas.clientWidth * dpr))
     const height = Math.max(1, Math.round(canvas.clientHeight * dpr))
     if (canvas.width !== width || canvas.height !== height) {
@@ -120,8 +123,8 @@ export function createRenderer(canvas: HTMLCanvasElement, fragSrc: string): Rend
     return { width, height }
   }
 
-  function render(uniforms: Uniforms) {
-    const { width, height } = resize()
+  function render(uniforms: Uniforms, scale = 1) {
+    const { width, height } = resize(scale)
     gl.useProgram(program)
 
     // resolution is always available

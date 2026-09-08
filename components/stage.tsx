@@ -9,16 +9,22 @@ interface StageProps {
   aura: AuraParams
   canvasRef: React.RefObject<HTMLCanvasElement | null>
   onError?: (message: string) => void
+  // Extra resolution multiplier on top of the device pixel ratio — bumped
+  // while exporting so the recorded video is sharper than the on-screen
+  // canvas, without changing what's displayed.
+  exportScale?: number
 }
 
-export function Stage({ aura, canvasRef, onError }: StageProps) {
+export function Stage({ aura, canvasRef, onError, exportScale = 1 }: StageProps) {
   // Keep latest params in a ref so the render loop reads fresh values
   // without tearing down WebGL on every slider change.
   const auraRef = useRef(aura)
+  const exportScaleRef = useRef(exportScale)
   // Deliberate "latest ref" sync: written during render, only ever read
   // later from the rAF loop/event handlers below — never read here.
   /* eslint-disable react-hooks/refs */
   auraRef.current = aura
+  exportScaleRef.current = exportScale
   /* eslint-enable react-hooks/refs */
 
   const pointerRef = useRef<[number, number]>([0.5, 0.5])
@@ -122,7 +128,7 @@ export function Stage({ aura, canvasRef, onError }: StageProps) {
         uColBg: hexToRgb(p.colBg),
       }
 
-      if (renderer) renderer.render(uniforms)
+      if (renderer) renderer.render(uniforms, exportScaleRef.current)
       raf = requestAnimationFrame(frame)
     }
 

@@ -91,21 +91,31 @@ export function Playground() {
     if (!canvas || recording) return
     setRecording(true)
     setProgress(0)
-    recordHandle.current = recordLoop(
-      canvas,
-      6000,
-      (t) => setProgress(t),
-      (url) => {
-        setRecording(false)
-        recordHandle.current = null
-        if (!url) {
-          setToast('Video recording is not supported in this browser')
-          return
-        }
-        downloadVideo(url, `pritzker-aura-loop-${Date.now()}`)
-        setToast('6s loop exported (.webm)')
-      },
-    )
+    // Bumping `recording` doubles the canvas's render resolution via
+    // exportScale below, but that only takes effect once React re-renders
+    // Stage and its own rAF loop resizes the canvas — a couple of frames
+    // away. Wait for that before starting captureStream, so the recording
+    // starts at the doubled resolution from frame one instead of resizing
+    // partway through (which some encoders handle poorly).
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        recordHandle.current = recordLoop(
+          canvas,
+          6000,
+          (t) => setProgress(t),
+          (url, mimeType) => {
+            setRecording(false)
+            recordHandle.current = null
+            if (!url) {
+              setToast('Video recording is not supported in this browser')
+              return
+            }
+            downloadVideo(url, `pritzker-aura-loop-${Date.now()}`, mimeType)
+            setToast(mimeType.startsWith('video/mp4') ? '6s loop exported (.mp4)' : '6s loop exported (.webm — mp4 unsupported here)')
+          },
+        )
+      })
+    })
   }
 
   return (
@@ -173,7 +183,7 @@ export function Playground() {
                 : { width: '100%', height: '100%' }
             }
           >
-            <Stage aura={aura} canvasRef={canvasRef} onError={setError} />
+            <Stage aura={aura} canvasRef={canvasRef} onError={setError} exportScale={recording ? 2 : 1} />
             {error ? (
               <div className="absolute inset-0 flex items-center justify-center bg-secondary/95 p-6 text-center text-sm text-muted-foreground">
                 {error}
