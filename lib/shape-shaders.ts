@@ -50,9 +50,9 @@ void main() {
   // looming over an increasingly small shape. Blur radius peaks at the
   // cursor and eases to zero by its rim.
   float shapeSize = 2.0 * min(halfSize.x, halfSize.y);
-  float lensRadius = 0.5 * shapeSize;
+  float lensRadius = 0.7 * shapeSize;
   float falloff = 1.0 - smoothstep(0.0, lensRadius, length(gl_FragCoord.xy - uMouse));
-  float maxBlur = 0.32 * shapeSize;
+  float maxBlur = 0.6 * shapeSize;
 
   // How deep the cursor itself currently sits inside the shape (not this
   // fragment) — evaluate the same SDF at the mouse position so hovering
@@ -64,7 +64,10 @@ void main() {
     mouseSdf = abs(mouseSdf) - 0.5 * uBorderWidth;
   }
   float centerDepth = clamp(-mouseSdf / (0.5 * shapeSize), 0.0, 1.0);
-  float centerReduction = 1.0 - uCenterDamp * centerDepth;
+  // Square-rooted so the reduction ramps up fast moving in from the rim
+  // instead of linearly — at full strength this keeps a much larger
+  // share of the interior crisp, not just the exact center point.
+  float centerReduction = 1.0 - uCenterDamp * sqrt(centerDepth);
 
   float blur = max(uHoverIntensity * maxBlur * falloff * centerReduction, 1.0); // 1px floor keeps a clean edge at rest
 
@@ -81,8 +84,8 @@ void main() {
   // two-color edge (no visible hover color) once blur shrinks back down
   // to its resting 1px floor.
   float t = clamp(sdf / blur, -1.0, 1.0);
-  float shapeToHover = smoothstep(-1.0, -0.4, t);
-  float hoverToBg = smoothstep(-0.1, 1.0, t);
+  float shapeToHover = smoothstep(-1.0, -0.6, t);
+  float hoverToBg = smoothstep(0.4, 1.0, t);
 
   // Scaling shapeToHover itself (rather than the mix below it) keeps this
   // leak-free at any amount: at 0 the shape simply never tints toward
