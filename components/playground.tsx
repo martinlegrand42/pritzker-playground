@@ -5,8 +5,7 @@ import { Clapperboard, Dices, Download, ImageDown, RotateCcw } from 'lucide-reac
 import { Stage } from './stage'
 import { ControlPanel } from './control-panel'
 import { cn } from '@/lib/utils'
-import { exportPng, downloadVideo } from '@/lib/export'
-import { exportAuraLoopExact, ExportCancelledError } from '@/lib/export-exact'
+import { exportPng, recordLoop, downloadVideo } from '@/lib/export'
 import { loadPersisted, savePersisted } from '@/lib/persist'
 import { AURA_DEFAULT, randomizeAura, type AuraParams } from '@/lib/presets'
 
@@ -37,8 +36,10 @@ export function Playground() {
   const [recording, setRecording] = useState(false)
   const [progress, setProgress] = useState(0)
   const [toast, setToast] = useState<string | null>(null)
+  const [exportWidth, setExportWidth] = useState<number | undefined>(undefined)
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const exportCancelledRef = useRef(false)
+  const recordHandle = useRef<{ stop: () => void } | null>(null)
 
   // Load any saved look once, after mount (client-only, so it can't create
   // a hydration mismatch). This uses the raw setters, not the persisting
@@ -85,55 +86,67 @@ export function Playground() {
     setToast('Still frame exported (.png)')
   }
 
-  // The browser's own hardware video encoder (the fast, live capture path)
-  // has a resolution ceiling well under 4000px on some hardware, and
-  // silently rejects or clamps beyond it — there's no way to force real
-  // hardware past its own limit. So export instead renders deterministically
-  // frame by frame on a detached offscreen canvas (bypassing live capture
-  // entirely) and encodes with a WASM software encoder, which has no such
-  // ceiling. Trades a lot of speed for a guaranteed-exact result. 12fps
-  // keeps the frame count (and the memory needed to hold them all before
-  // encoding) low enough to stay reliable at this resolution.
-  const EXPORT_WIDTH = 4000
-  const EXPORT_FPS = 12
+  // H.264's hardware encoder can reject a large resolution outright — e.g.
+  // "the given encoder configuration is not supported by the encoder" — even
+  // though mp4 itself is supported. mp4 must stay mp4, so what steps down
+  // here is the resolution, not the format; only at the smallest width does
+  // recordLoop get permission to fall back to webm as a last resort.
+  const EXPORT_WIDTHS = [4000, 2560, 1920, 1280]
 
-  const handleExportLoop = async () => {
+  const attemptExportLoop = (canvas: HTMLCanvasElement, widthIndex: number) => {
+    setExportWidth(EXPORT_WIDTHS[widthIndex])
+    setProgress(0)
+    // Switching exportWidth only takes effect once React re-renders Stage
+    // and its own rAF loop resizes the canvas — a couple of frames away.
+    // Wait for that before starting captureStream, so the recording starts
+    // at the export resolution from frame one instead of resizing partway
+    // through (which some encoders handle poorly).
+    const isLastWidth = widthIndex === EXPORT_WIDTHS.length - 1
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        recordHandle.current = recordLoop(
+          canvas,
+          6000,
+          (t) => setProgress(t),
+          (url, mimeType, reason, actualSize) => {
+            recordHandle.current = null
+            if (!url) {
+              if (!isLastWidth) {
+                attemptExportLoop(canvas, widthIndex + 1)
+                return
+              }
+              setRecording(false)
+              setExportWidth(undefined)
+              setToast(reason || 'Video recording is not supported in this browser')
+              return
+            }
+            setRecording(false)
+            setExportWidth(undefined)
+            downloadVideo(url, `pritzker-aura-loop-${Date.now()}`, mimeType)
+            // Report what the file actually decodes to, not what we asked
+            // for — some encoders silently clamp resolution rather than
+            // erroring, and a wrong claim is worse than an honest one.
+            const res = actualSize ? `${actualSize.width}x${actualSize.height}` : `~${EXPORT_WIDTHS[widthIndex]}px wide (unverified)`
+            setToast(
+              mimeType.startsWith('video/mp4')
+                ? `6s loop exported (.mp4, ${res})`
+                : `6s loop exported (.webm — mp4 unsupported here, ${res})`,
+            )
+          },
+          // mp4 is required at every width except the last — only once
+          // every resolution has failed to produce mp4 is webm allowed,
+          // as an absolute last resort rather than a routine substitute.
+          isLastWidth,
+        )
+      })
+    })
+  }
+
+  const handleExportLoop = () => {
     const canvas = canvasRef.current
     if (!canvas || recording) return
     setRecording(true)
-    setProgress(0)
-    exportCancelledRef.current = false
-    const aspect = canvas.clientWidth / canvas.clientHeight
-    const height = Math.max(2, Math.round(EXPORT_WIDTH / aspect / 2) * 2)
-    try {
-      const result = await exportAuraLoopExact(
-        aura,
-        EXPORT_WIDTH,
-        height,
-        6000,
-        EXPORT_FPS,
-        process.env.NEXT_PUBLIC_BASE_PATH || '',
-        (phase, t) => {
-          // Loading the WASM encoder and rendering frames are the bulk of
-          // the wait; encoding is comparatively quick, so weight the bar
-          // accordingly rather than splitting it evenly into thirds.
-          if (phase === 'loading') setProgress(t * 0.05)
-          else if (phase === 'rendering') setProgress(0.05 + t * 0.85)
-          else setProgress(0.9 + t * 0.1)
-        },
-        () => exportCancelledRef.current,
-      )
-      setRecording(false)
-      downloadVideo(result.url, `pritzker-aura-loop-${Date.now()}`, 'video/mp4')
-      setToast(`6s loop exported (.mp4, ${result.width}x${result.height})`)
-    } catch (err) {
-      setRecording(false)
-      if (err instanceof ExportCancelledError) {
-        setToast('Export cancelled')
-        return
-      }
-      setToast(err instanceof Error ? err.message : 'Video export failed')
-    }
+    attemptExportLoop(canvas, 0)
   }
 
   return (
@@ -199,7 +212,7 @@ export function Playground() {
                 : { width: '100%', height: '100%' }
             }
           >
-            <Stage aura={aura} canvasRef={canvasRef} onError={setError} />
+            <Stage aura={aura} canvasRef={canvasRef} onError={setError} exportWidth={exportWidth} />
             {error ? (
               <div className="absolute inset-0 flex items-center justify-center bg-secondary/95 p-6 text-center text-sm text-muted-foreground">
                 {error}
@@ -244,15 +257,13 @@ export function Playground() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive/60" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-destructive" />
             </span>
-            <span className="text-xs font-medium">Exporting loop…</span>
+            <span className="text-xs font-medium">Recording loop</span>
             <span className="h-1 w-28 overflow-hidden rounded-full bg-secondary">
               <span className="block h-full bg-primary transition-[width]" style={{ width: `${progress * 100}%` }} />
             </span>
             <button
               type="button"
-              onClick={() => {
-                exportCancelledRef.current = true
-              }}
+              onClick={() => recordHandle.current?.stop()}
               className="pointer-events-auto text-xs font-medium text-muted-foreground hover:text-foreground"
             >
               Stop
