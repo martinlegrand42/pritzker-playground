@@ -12,8 +12,6 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // Vendored, minified third-party assets — not code we write or lint.
-    "public/**",
   ]),
 ]);
 

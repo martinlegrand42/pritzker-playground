@@ -11,10 +11,6 @@ const nextConfig: NextConfig = {
   basePath,
   assetPrefix: basePath,
   trailingSlash: true,
-  // Exposed to client code that needs to build an absolute asset URL itself
-  // (e.g. fetching the ffmpeg WASM core), rather than going through
-  // next/image or next/link which apply basePath automatically.
-  env: { NEXT_PUBLIC_BASE_PATH: basePath },
 };
 
 export default nextConfig;

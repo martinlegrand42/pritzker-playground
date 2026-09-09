@@ -81,19 +81,14 @@ export function createRenderer(canvas: HTMLCanvasElement, fragSrc: string): Rend
   }
 
   // Give the drawing buffer a real size before compiling/linking so drivers
-  // that lazily allocate on first use don't drop the context mid-init. A
-  // detached/offscreen canvas (deterministic frame-by-frame export) has no
-  // DOM layout to size from — trust the width/height the caller already
-  // set on it directly instead of clobbering that with clientWidth||1.
-  if (canvas.isConnected) {
+  // that lazily allocate on first use don't drop the context mid-init.
+  {
     const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR)
     const w = Math.max(1, Math.round((canvas.clientWidth || 1) * dpr))
     const h = Math.max(1, Math.round((canvas.clientHeight || 1) * dpr))
     canvas.width = w
     canvas.height = h
     gl.viewport(0, 0, w, h)
-  } else {
-    gl.viewport(0, 0, canvas.width, canvas.height)
   }
 
   const program = createProgram(gl, VERT_SHADER, fragSrc)
@@ -120,13 +115,7 @@ export function createRenderer(canvas: HTMLCanvasElement, fragSrc: string): Rend
   function resize(exportWidth?: number) {
     let width: number
     let height: number
-    if (exportWidth && !canvas.isConnected) {
-      // Detached/offscreen canvas (e.g. deterministic frame-by-frame
-      // export): there's no DOM layout to derive an aspect ratio from, so
-      // trust whatever width/height the caller already set directly.
-      width = canvas.width
-      height = canvas.height
-    } else if (exportWidth) {
+    if (exportWidth) {
       const aspect = (canvas.clientWidth || 1) / (canvas.clientHeight || 1)
       // Video encoders (especially hardware ones) commonly require even
       // width/height for 4:2:0 chroma subsampling and reject the whole
