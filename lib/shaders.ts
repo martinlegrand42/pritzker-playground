@@ -215,7 +215,7 @@ void main(){
   // short of 1 so that side still gets a clean antialiased edge, never a
   // hard aliased one.
   float vLobeOpp = exp(-(1.0 - cos(ang - (vMouseAng + 3.14159265358979))) * 2.2);
-  float blurReduce = 1.0 - uCursorExpand * abs(uVerticalExpansion) * vLobeOpp * 0.7;
+  float blurReduce = 1.0 - uCursorExpand * abs(uVerticalExpansion) * vLobeOpp * 0.95;
 
   float blurLocal = blur * blurGrow * blurReduce;
   float edgeBlurLocal = edgeBlur * blurGrow * blurReduce;
