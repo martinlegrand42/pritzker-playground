@@ -37,6 +37,7 @@ export function Playground() {
   const [recording, setRecording] = useState(false)
   const [progress, setProgress] = useState(0)
   const [toast, setToast] = useState<string | null>(null)
+  const [exportWidth, setExportWidth] = useState<number | undefined>(undefined)
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const recordHandle = useRef<{ stop: () => void } | null>(null)
@@ -86,36 +87,67 @@ export function Playground() {
     setToast('Still frame exported (.png)')
   }
 
-  const handleExportLoop = () => {
-    const canvas = canvasRef.current
-    if (!canvas || recording) return
-    setRecording(true)
+  // H.264's hardware encoder can reject a large resolution outright — e.g.
+  // "the given encoder configuration is not supported by the encoder" — even
+  // though mp4 itself is supported. mp4 must stay mp4, so what steps down
+  // here is the resolution, not the format; only at the smallest width does
+  // recordLoop get permission to fall back to webm as a last resort.
+  const EXPORT_WIDTHS = [4000, 2560, 1920, 1280]
+
+  const attemptExportLoop = (canvas: HTMLCanvasElement, widthIndex: number) => {
+    setExportWidth(EXPORT_WIDTHS[widthIndex])
     setProgress(0)
-    // Bumping `recording` doubles the canvas's render resolution via
-    // exportScale below, but that only takes effect once React re-renders
-    // Stage and its own rAF loop resizes the canvas — a couple of frames
-    // away. Wait for that before starting captureStream, so the recording
-    // starts at the doubled resolution from frame one instead of resizing
-    // partway through (which some encoders handle poorly).
+    // Switching exportWidth only takes effect once React re-renders Stage
+    // and its own rAF loop resizes the canvas — a couple of frames away.
+    // Wait for that before starting captureStream, so the recording starts
+    // at the export resolution from frame one instead of resizing partway
+    // through (which some encoders handle poorly).
+    const isLastWidth = widthIndex === EXPORT_WIDTHS.length - 1
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         recordHandle.current = recordLoop(
           canvas,
           6000,
           (t) => setProgress(t),
-          (url, mimeType, reason) => {
-            setRecording(false)
+          (url, mimeType, reason, actualSize) => {
             recordHandle.current = null
             if (!url) {
+              if (!isLastWidth) {
+                attemptExportLoop(canvas, widthIndex + 1)
+                return
+              }
+              setRecording(false)
+              setExportWidth(undefined)
               setToast(reason || 'Video recording is not supported in this browser')
               return
             }
+            setRecording(false)
+            setExportWidth(undefined)
             downloadVideo(url, `pritzker-aura-loop-${Date.now()}`, mimeType)
-            setToast(mimeType.startsWith('video/mp4') ? '6s loop exported (.mp4)' : '6s loop exported (.webm — mp4 unsupported here)')
+            // Report what the file actually decodes to, not what we asked
+            // for — some encoders silently clamp resolution rather than
+            // erroring, and a wrong claim is worse than an honest one.
+            const res = actualSize ? `${actualSize.width}x${actualSize.height}` : `~${EXPORT_WIDTHS[widthIndex]}px wide (unverified)`
+            setToast(
+              mimeType.startsWith('video/mp4')
+                ? `6s loop exported (.mp4, ${res})`
+                : `6s loop exported (.webm — mp4 unsupported here, ${res})`,
+            )
           },
+          // mp4 is required at every width except the last — only once
+          // every resolution has failed to produce mp4 is webm allowed,
+          // as an absolute last resort rather than a routine substitute.
+          isLastWidth,
         )
       })
     })
+  }
+
+  const handleExportLoop = () => {
+    const canvas = canvasRef.current
+    if (!canvas || recording) return
+    setRecording(true)
+    attemptExportLoop(canvas, 0)
   }
 
   return (
@@ -183,7 +215,7 @@ export function Playground() {
                 : { width: '100%', height: '100%' }
             }
           >
-            <Stage aura={aura} canvasRef={canvasRef} onError={setError} exportScale={recording ? 2 : 1} />
+            <Stage aura={aura} canvasRef={canvasRef} onError={setError} exportWidth={exportWidth} />
             {error ? (
               <div className="absolute inset-0 flex items-center justify-center bg-secondary/95 p-6 text-center text-sm text-muted-foreground">
                 {error}
