@@ -33,7 +33,6 @@ export function ShapeControlPanel({ aura, setAura }: ShapeControlPanelProps) {
       </Section>
 
       <Section title="Motion">
-        <Slider label="Gradient drift" value={aura.gradient} min={0} max={1} onChange={(v) => setAura({ ...aura, gradient: v })} />
         <Slider
           label="Cursor threshold expansion"
           value={aura.cursorExpand}
