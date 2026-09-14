@@ -41,6 +41,12 @@ const SHAPE_DEFAULT: AuraParams = {
   hoverStrength: 0,
   cursorExpand: 0.7,
   edgeBlurRatio: 0.85,
+  // Color Burn barely darkens a light backdrop (its math divides by the
+  // burn color, so a near-white backdrop stays near-white regardless of
+  // mix amount), which is exactly the mid/edge boundary here -- reading as
+  // a faint uneven/lighter patch rather than a clean gradient. A plain
+  // linear mix doesn't have that quirk.
+  midBurn: false,
 }
 
 const STORAGE_KEY = 'pritzker-identity-studio:shape:v9'
