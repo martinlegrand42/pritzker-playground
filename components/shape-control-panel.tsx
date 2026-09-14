@@ -85,6 +85,14 @@ export function ShapeControlPanel({ shape, setShape }: ShapeControlPanelProps) {
 
       <Section title="Motion">
         <Slider
+          label="Softness"
+          value={shape.restBlur}
+          min={0}
+          max={1}
+          format={(v) => `${Math.round(v * 100)}%`}
+          onChange={(v) => setShape({ ...shape, restBlur: v })}
+        />
+        <Slider
           label="Hover blur intensity"
           value={shape.hoverIntensity}
           min={0}

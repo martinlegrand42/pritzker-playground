@@ -24,11 +24,24 @@ export function ShapeStage({ shape, canvasRef, onError }: ShapeStageProps) {
   /* eslint-enable react-hooks/refs */
 
   // Mouse position in CSS px (canvas-local, top-left origin), and how far
-  // the lens is currently faded in — eased so leaving/entering the canvas
-  // reads as a smooth defocus rather than a hard cut.
+  // the lens is currently faded in — eased over a fixed 600ms rather than a
+  // hard cut, so leaving/entering the canvas reads as a smooth defocus.
   const pointerRef = useRef<[number, number]>([-9999, -9999])
   const hoverRef = useRef(0)
   const hoverTargetRef = useRef(0)
+  const hoverFromRef = useRef(0)
+  const hoverStartRef = useRef(0)
+  const HOVER_TRANSITION_MS = 600
+
+  // Re-starts the 600ms ease from whatever value it's currently at (not
+  // necessarily 0 or 1), so a quick enter-then-leave retargets smoothly
+  // instead of jumping or restarting from the wrong end.
+  const setHoverTarget = (target: number) => {
+    if (hoverTargetRef.current === target) return
+    hoverFromRef.current = hoverRef.current
+    hoverStartRef.current = performance.now()
+    hoverTargetRef.current = target
+  }
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -55,7 +68,10 @@ export function ShapeStage({ shape, canvasRef, onError }: ShapeStageProps) {
     }
 
     const frame = () => {
-      hoverRef.current += (hoverTargetRef.current - hoverRef.current) * 0.08
+      const elapsed = performance.now() - hoverStartRef.current
+      const t = Math.min(1, elapsed / HOVER_TRANSITION_MS)
+      const eased = t * t * (3 - 2 * t) // smoothstep easing
+      hoverRef.current = hoverFromRef.current + (hoverTargetRef.current - hoverFromRef.current) * eased
 
       const p = shapeRef.current
       const width = canvas.clientWidth || 1
@@ -90,6 +106,7 @@ export function ShapeStage({ shape, canvasRef, onError }: ShapeStageProps) {
         uCenterDamp: p.centerBlurReduction,
         uHoverColorAmount: p.hoverColorAmount,
         uColorBlendSoftness: p.colorBlendSoftness,
+        uRestBlur: p.restBlur,
         uColBg: hexToRgb(p.bgColor),
         uColShape: hexToRgb(p.shapeColor),
         uColHover: hexToRgb(p.hoverColor),
@@ -131,8 +148,8 @@ export function ShapeStage({ shape, canvasRef, onError }: ShapeStageProps) {
   return (
     <div
       className="relative h-full w-full"
-      onPointerEnter={() => (hoverTargetRef.current = 1)}
-      onPointerLeave={() => (hoverTargetRef.current = 0)}
+      onPointerEnter={() => setHoverTarget(1)}
+      onPointerLeave={() => setHoverTarget(0)}
       onPointerMove={updatePointer}
     >
       <canvas ref={canvasRef} className="h-full w-full" aria-label="Shape preview" />

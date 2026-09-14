@@ -26,6 +26,7 @@ uniform float uHoverIntensity; // 0..1, eased lens strength
 uniform float uCenterDamp;     // 0..1, how much to cut the lens when hovering deep inside the shape
 uniform float uHoverColorAmount; // 0..1, how far shape color tints toward hover color at its stop
 uniform float uColorBlendSoftness; // 0..1, how gradually shape color melts into hover color
+uniform float uRestBlur;       // 0..1 of shapeSize, a baseline transition width present even at rest
 uniform vec3  uColBg;
 uniform vec3  uColShape;
 uniform vec3  uColHover;       // shows only in the blurred transition band, at its outer edge
@@ -51,9 +52,9 @@ void main() {
   // looming over an increasingly small shape. Blur radius peaks at the
   // cursor and eases to zero by its rim.
   float shapeSize = 2.0 * min(halfSize.x, halfSize.y);
-  float lensRadius = 0.7 * shapeSize;
+  float lensRadius = 0.9 * shapeSize;
   float falloff = 1.0 - smoothstep(0.0, lensRadius, length(gl_FragCoord.xy - uMouse));
-  float maxBlur = 0.6 * shapeSize;
+  float maxBlur = 0.9 * shapeSize;
 
   // How deep the cursor itself currently sits inside the shape (not this
   // fragment) — evaluate the same SDF at the mouse position so hovering
@@ -70,7 +71,12 @@ void main() {
   // share of the interior crisp, not just the exact center point.
   float centerReduction = 1.0 - uCenterDamp * sqrt(centerDepth);
 
-  float blur = max(uHoverIntensity * maxBlur * falloff * centerReduction, 1.0); // 1px floor keeps a clean edge at rest
+  // uRestBlur is a floor on the transition width itself (as a fraction of
+  // the shape's own size), so the edge reads as permanently soft even at
+  // rest -- hovering then expands the blur further outward from that
+  // baseline rather than creating softness from a crisp edge.
+  float restBlurPx = uRestBlur * shapeSize;
+  float blur = max(max(uHoverIntensity * maxBlur * falloff * centerReduction, restBlurPx), 1.0);
 
   // Three sequential stops — shape, then hover color, then background —
   // chained so each mix starts from the previous one's result instead of
