@@ -156,20 +156,6 @@ void main(){
   // and mid expand into it, instead of staying essentially the same size
   float edgeR = uSize * mix(1.0, 1.12, phi * breathAmt) * (1.0 + g2 * 0.02);
 
-  // Cursor-driven layer expansion (opt-in via uCursorExpand, 0 = inert):
-  // each layer's own radius grows as the cursor moves away from center --
-  // monotonic and always live (uExpansionAmount, pre-eased in JS), not
-  // gated by hover enter/leave. Edge grows the most, mid a bit less, core
-  // the least, so the halo reaches further out while the core stays
-  // comparatively tight -- not a uniform blur widening (tried first and
-  // rejected: it puffed up all three layers by the same relative amount,
-  // which reads as the whole shape softening evenly rather than the edge
-  // specifically reaching outward).
-  float expand = uCursorExpand * uExpansionAmount;
-  coreR *= 1.0 + expand * 0.05;
-  midR *= 1.0 + expand * 0.35;
-  edgeR *= 1.0 + expand * 0.9;
-
   float blur = uSize * 0.516 * (uSoftness / 0.4);
 
   // same ambient + hover wobble as before, shifting the shared distance
@@ -182,9 +168,25 @@ void main(){
   // dissolving at the same rate as everything else
   float edgeBlur = blur * 0.6;
 
-  float coreA = 1.0 - smoothstep(coreR - blur, coreR + blur, rrEff);
-  float midA = 1.0 - smoothstep(midR - blur, midR + blur, rrEff);
-  float edgeA = 1.0 - smoothstep(edgeR - edgeBlur, edgeR + edgeBlur, rrEff);
+  // Cursor-driven layer expansion (opt-in via uCursorExpand, 0 = inert):
+  // each layer bulges specifically toward wherever the cursor actually is,
+  // reusing "lobe" (how aligned this fragment's angle from center is with
+  // the cursor's own angle from center) so the growth has a real focal
+  // point at the cursor's position instead of inflating the whole shape
+  // uniformly in every direction -- monotonic with distance from center
+  // and always live (uExpansionAmount, pre-eased in JS), not gated by
+  // hover enter/leave. Edge stretches the most, mid a bit less, core the
+  // least. An earlier version scaled coreR/midR/edgeR directly, which grew
+  // the shape symmetrically around its own center regardless of cursor
+  // direction -- exactly the "proportional scaling" this replaces.
+  float expand = uCursorExpand * uExpansionAmount * lobe;
+  float rrEffCore = rrEff - expand * uSize * 0.08;
+  float rrEffMid = rrEff - expand * uSize * 0.35;
+  float rrEffEdge = rrEff - expand * uSize * 0.9;
+
+  float coreA = 1.0 - smoothstep(coreR - blur, coreR + blur, rrEffCore);
+  float midA = 1.0 - smoothstep(midR - blur, midR + blur, rrEffMid);
+  float edgeA = 1.0 - smoothstep(edgeR - edgeBlur, edgeR + edgeBlur, rrEffEdge);
 
   vec3 col = mix(uColBg, uColEdge, edgeA);
   vec3 midNormal = mix(col, uColMid, midA);
