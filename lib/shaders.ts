@@ -156,19 +156,21 @@ void main(){
   // and mid expand into it, instead of staying essentially the same size
   float edgeR = uSize * mix(1.0, 1.12, phi * breathAmt) * (1.0 + g2 * 0.02);
 
-  // Cursor-driven blur expansion (opt-in via uCursorExpand, 0 = inert): the
-  // whole shape's edge widens together as the cursor moves away from
-  // center, the same way tympanus.net's SDF lens blur widens its
-  // antialiasing band near the cursor -- monotonic and always live
-  // (uExpansionAmount, pre-eased in JS), not gated by hover enter/leave and
-  // not the bell-curve "attract" above, which peaks at the rim and fades
-  // both toward center and further out. A raw per-pixel distance-to-cursor
-  // mask was tried first and rejected: it could widen the threshold for
-  // background pixels far from the shape too, leaving a disconnected soft
-  // patch hovering at the cursor's position independent of the shape itself.
-  float blurExpand = 1.0 + uCursorExpand * uExpansionAmount * 3.0;
+  // Cursor-driven layer expansion (opt-in via uCursorExpand, 0 = inert):
+  // each layer's own radius grows as the cursor moves away from center --
+  // monotonic and always live (uExpansionAmount, pre-eased in JS), not
+  // gated by hover enter/leave. Edge grows the most, mid a bit less, core
+  // the least, so the halo reaches further out while the core stays
+  // comparatively tight -- not a uniform blur widening (tried first and
+  // rejected: it puffed up all three layers by the same relative amount,
+  // which reads as the whole shape softening evenly rather than the edge
+  // specifically reaching outward).
+  float expand = uCursorExpand * uExpansionAmount;
+  coreR *= 1.0 + expand * 0.05;
+  midR *= 1.0 + expand * 0.35;
+  edgeR *= 1.0 + expand * 0.9;
 
-  float blur = uSize * 0.516 * (uSoftness / 0.4) * blurExpand;
+  float blur = uSize * 0.516 * (uSoftness / 0.4);
 
   // same ambient + hover wobble as before, shifting the shared distance
   // measurement so all three circles lean together as one blob instead
