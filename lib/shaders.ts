@@ -84,6 +84,16 @@ uniform float uGradient;    // how much the gradient bands drift out of sync
 uniform float uGrain;       // grain amount
 uniform float uGrainSize;   // grain cell size, in device pixels
 uniform float uHoverStrength; // how much the cursor magnifies nearby wobble
+uniform float uEdgeBlurRatio; // edge layer's blur as a fraction of core/mid's shared blur
+uniform float uEdgeSizeRatio; // multiplier on the edge layer's own radius (1.0 = unchanged)
+uniform float uMidSizeRatio;  // multiplier on the mid layer's own radius (1.0 = unchanged)
+uniform float uCursorExpand; // 0..1, opt-in strength of the effect below -- 0 leaves every
+                              // other caller of this shader (Aura's own page) unaffected.
+uniform float uVerticalExpansion; // -1..1, pre-eased in JS: the cursor's vertical-only offset
+                              // from center (horizontal position ignored entirely), positive
+                              // above center / negative below -- always live regardless of
+                              // hover enter/leave, multiplied by uCursorExpand below, so it's
+                              // inert whenever that's 0.
 uniform float uMidBurn;    // 0/1: blend the mid color in with a Color Burn instead of a linear mix
 uniform vec3  uColCore;
 uniform vec3  uColMid;
@@ -144,11 +154,12 @@ void main(){
   float phi = 0.5 + 0.5 * sin(uTime * uBreathSpeed); // 0..1 breathing phase
   float breathAmt = uBreath / 0.08; // 1.0 reproduces the given keyframes exactly
   float coreR = uSize * mix(0.445, 0.615, phi * breathAmt);
-  float midR = uSize * mix(0.572, 0.779, phi * breathAmt) * (1.0 + g1 * 0.04);
+  float midR = uSize * mix(0.572, 0.779, phi * breathAmt) * (1.0 + g1 * 0.04) * uMidSizeRatio;
   // edge grows along with the breathing zoom-in too — more than the Figma
   // keyframes alone call for — so more of its own color shows once core
   // and mid expand into it, instead of staying essentially the same size
-  float edgeR = uSize * mix(1.0, 1.12, phi * breathAmt) * (1.0 + g2 * 0.02);
+  float edgeR = uSize * mix(1.0, 1.12, phi * breathAmt) * (1.0 + g2 * 0.02) * uEdgeSizeRatio;
+
   float blur = uSize * 0.516 * (uSoftness / 0.4);
 
   // same ambient + hover wobble as before, shifting the shared distance
@@ -158,12 +169,63 @@ void main(){
 
   // the edge circle gets a bit less blur than core/mid so its own color
   // reads as a clearer band before fading into the background, instead of
-  // dissolving at the same rate as everything else
-  float edgeBlur = blur * 0.6;
+  // dissolving at the same rate as everything else. Configurable (not a
+  // hardcoded constant) because this affects every caller of this shader
+  // unconditionally -- Aura's own page keeps its original 0.6 exactly, and
+  // only Shape Studio's own default raises it.
+  float edgeBlur = blur * uEdgeBlurRatio;
 
-  float coreA = 1.0 - smoothstep(coreR - blur, coreR + blur, rrEff);
-  float midA = 1.0 - smoothstep(midR - blur, midR + blur, rrEff);
-  float edgeA = 1.0 - smoothstep(edgeR - edgeBlur, edgeR + edgeBlur, rrEff);
+  // Cursor-driven layer expansion (opt-in via uCursorExpand, 0 = inert):
+  // each layer bulges specifically toward wherever the cursor is vertically
+  // -- horizontal cursor position has zero effect, and the bulge only ever
+  // points straight up or straight down, never sideways. vLobe is the same
+  // bell-curve shape as "lobe" above, but measured against a reference
+  // angle snapped to straight up/down (based on the sign of
+  // uVerticalExpansion) instead of the cursor's actual, possibly diagonal,
+  // angle from center -- so only fragments near the top or bottom of the
+  // shape (whichever the cursor is vertically nearer to) bulge outward.
+  // Edge stretches the most, mid a bit less, core the least. Magnitude
+  // tripled per request ("increase by 200%"): 0.08/0.35/0.9 -> 0.24/1.05/2.7.
+  float vMouseAng = uVerticalExpansion >= 0.0 ? 1.5707963267948966 : -1.5707963267948966;
+  float vLobe = exp(-(1.0 - cos(ang - vMouseAng)) * 2.2);
+  // Mirrors vLobe but centered on the angle opposite the cursor's vertical
+  // direction, so it's large exactly where vLobe is near zero -- used
+  // below to pull mid/edge in a little on the far side (not core, and not
+  // just their blur) so that side reads as slightly contracted rather
+  // than merely "not expanded".
+  float vLobeOpp = exp(-(1.0 - cos(ang - (vMouseAng + 3.14159265358979))) * 2.2);
+  float expand = uCursorExpand * abs(uVerticalExpansion) * vLobe;
+  float contract = uCursorExpand * abs(uVerticalExpansion) * vLobeOpp;
+  float rrEffCore = rrEff - expand * uSize * 0.24;
+  float rrEffMid = rrEff - expand * uSize * 1.05 + contract * uSize * 0.15;
+  float rrEffEdge = rrEff - expand * uSize * 2.7 + contract * uSize * 0.25;
+
+  // Each layer stretches by a different amount (edge most, core least), so
+  // the gap between adjacent layers' boundaries widens as expansion grows
+  // -- up to ~1.65*uSize between mid and edge alone at full expansion. The
+  // fixed blur widths above were sized for the resting, close-together
+  // layers; left unchanged, that gap opens up faster than the blur can
+  // bridge it, leaving a flat, unblended plateau of pure edge color in
+  // between -- the "lighter halo" this was meant to fix wasn't Color Burn,
+  // it was this. Widening blur along with the expansion (same 0 = inert
+  // whenever uCursorExpand is 0) keeps the transition continuous instead.
+  float blurGrow = 1.0 + expand * 3.0;
+
+  // The side directly opposite the cursor (e.g. the bottom, when the
+  // cursor is above) gets progressively crisper as the cursor moves
+  // further away, instead of just sitting at the resting blur while the
+  // near side puffs up -- reads as the shape reaching softly toward the
+  // cursor while staying comparatively defined on the far side, matching
+  // the reference look. Reduction is capped just short of 1 so that side
+  // still gets a clean antialiased edge, never a fully hard aliased one.
+  float blurReduce = 1.0 - uCursorExpand * abs(uVerticalExpansion) * vLobeOpp * 0.95;
+
+  float blurLocal = blur * blurGrow * blurReduce;
+  float edgeBlurLocal = edgeBlur * blurGrow * blurReduce;
+
+  float coreA = 1.0 - smoothstep(coreR - blurLocal, coreR + blurLocal, rrEffCore);
+  float midA = 1.0 - smoothstep(midR - blurLocal, midR + blurLocal, rrEffMid);
+  float edgeA = 1.0 - smoothstep(edgeR - edgeBlurLocal, edgeR + edgeBlurLocal, rrEffEdge);
 
   vec3 col = mix(uColBg, uColEdge, edgeA);
   vec3 midNormal = mix(col, uColMid, midA);

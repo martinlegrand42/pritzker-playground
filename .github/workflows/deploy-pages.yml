@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - claude/pritzker-wysiwyg-playground-xth69g
   workflow_dispatch:
 
 permissions:

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Clapperboard, Dices, Download, ImageDown, RotateCcw } from 'lucide-react'
 import { Stage } from './stage'
 import { ControlPanel } from './control-panel'
+import { StudioNav } from './studio-nav'
 import { cn } from '@/lib/utils'
 import { exportPng, recordLoop, downloadVideo } from '@/lib/export'
 import { loadPersisted, savePersisted } from '@/lib/persist'
@@ -164,6 +165,8 @@ export function Playground() {
             </p>
           </div>
         </div>
+
+        <StudioNav />
 
         <div className="flex items-center gap-1.5">
           <ToolButton onClick={handleRandomize} icon={<Dices className="h-4 w-4" />} label="Generate" hideLabelOnMobile />
