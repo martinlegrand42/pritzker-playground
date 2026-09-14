@@ -14,6 +14,7 @@ export interface AuraParams {
   cursorExpand: number
   edgeBlurRatio: number
   edgeSizeRatio: number
+  midSizeRatio: number
   midBurn: boolean
   colCore: string
   colMid: string
@@ -60,6 +61,7 @@ export const AURA_DEFAULT: AuraParams = {
   cursorExpand: 0,
   edgeBlurRatio: 0.6,
   edgeSizeRatio: 1.0,
+  midSizeRatio: 1.0,
   midBurn: true,
   ...AURA_PALETTES[0],
 }
