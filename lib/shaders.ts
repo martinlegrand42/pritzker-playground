@@ -85,6 +85,7 @@ uniform float uGrain;       // grain amount
 uniform float uGrainSize;   // grain cell size, in device pixels
 uniform float uHoverStrength; // how much the cursor magnifies nearby wobble
 uniform float uEdgeBlurRatio; // edge layer's blur as a fraction of core/mid's shared blur
+uniform float uEdgeSizeRatio; // multiplier on the edge layer's own radius (1.0 = unchanged)
 uniform float uCursorExpand; // 0..1, opt-in strength of the effect below -- 0 leaves every
                               // other caller of this shader (Aura's own page) unaffected.
 uniform float uVerticalExpansion; // -1..1, pre-eased in JS: the cursor's vertical-only offset
@@ -156,7 +157,7 @@ void main(){
   // edge grows along with the breathing zoom-in too — more than the Figma
   // keyframes alone call for — so more of its own color shows once core
   // and mid expand into it, instead of staying essentially the same size
-  float edgeR = uSize * mix(1.0, 1.12, phi * breathAmt) * (1.0 + g2 * 0.02);
+  float edgeR = uSize * mix(1.0, 1.12, phi * breathAmt) * (1.0 + g2 * 0.02) * uEdgeSizeRatio;
 
   float blur = uSize * 0.516 * (uSoftness / 0.4);
 

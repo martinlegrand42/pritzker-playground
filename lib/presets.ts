@@ -13,6 +13,7 @@ export interface AuraParams {
   hoverStrength: number
   cursorExpand: number
   edgeBlurRatio: number
+  edgeSizeRatio: number
   midBurn: boolean
   colCore: string
   colMid: string
@@ -58,6 +59,7 @@ export const AURA_DEFAULT: AuraParams = {
   hoverStrength: 0.15,
   cursorExpand: 0,
   edgeBlurRatio: 0.6,
+  edgeSizeRatio: 1.0,
   midBurn: true,
   ...AURA_PALETTES[0],
 }
