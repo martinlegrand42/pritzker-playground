@@ -11,6 +11,7 @@ export interface AuraParams {
   grainOn: boolean
   hoverReact: boolean
   hoverStrength: number
+  cursorExpand: number
   midBurn: boolean
   colCore: string
   colMid: string
@@ -54,6 +55,7 @@ export const AURA_DEFAULT: AuraParams = {
   grainOn: true,
   hoverReact: true,
   hoverStrength: 0.15,
+  cursorExpand: 0,
   midBurn: true,
   ...AURA_PALETTES[0],
 }

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Clapperboard, Download, ImageDown, Link2, RotateCcw } from 'lucide-react'
 import { Stage } from './stage'
-import { ControlPanel } from './control-panel'
+import { ShapeControlPanel } from './shape-control-panel'
 import { StudioNav } from './studio-nav'
 import { exportPng, recordLoop, downloadVideo } from '@/lib/export'
 import { loadPersisted, savePersisted } from '@/lib/persist'
@@ -15,6 +15,10 @@ const SHARE_PARAM = 's'
 // the three-separately-blurred-circles technique it's built on already
 // produces the soft, layered look this tab was after, rather than the
 // earlier SDF rounded-rect lens-blur approach fighting to approximate it.
+// Motion diverges from Aura's own page though: no time-based breathing,
+// and the blur/threshold expands based on cursor position instead (see
+// uCursorExpand in lib/shaders.ts) -- so this tab gets its own default
+// params and its own control panel rather than Aura's.
 function encodeAuraParams(params: AuraParams): string {
   return btoa(JSON.stringify(params))
 }
@@ -27,10 +31,17 @@ function decodeAuraParams(encoded: string): Partial<AuraParams> | null {
   }
 }
 
-const STORAGE_KEY = 'pritzker-identity-studio:shape:v5'
+const SHAPE_DEFAULT: AuraParams = {
+  ...AURA_DEFAULT,
+  breath: 0,
+  breathSpeed: 0,
+  cursorExpand: 0.7,
+}
+
+const STORAGE_KEY = 'pritzker-identity-studio:shape:v6'
 
 export function ShapePlayground() {
-  const [aura, setAuraState] = useState<AuraParams>(AURA_DEFAULT)
+  const [aura, setAuraState] = useState<AuraParams>(SHAPE_DEFAULT)
   const [error, setError] = useState<string | null>(null)
 
   const [recording, setRecording] = useState(false)
@@ -75,7 +86,7 @@ export function ShapePlayground() {
     return () => clearTimeout(t)
   }, [toast])
 
-  const handleReset = () => setAura(AURA_DEFAULT)
+  const handleReset = () => setAura(SHAPE_DEFAULT)
 
   const handleExportPng = () => {
     const canvas = canvasRef.current
@@ -168,7 +179,7 @@ export function ShapePlayground() {
             </div>
           </div>
 
-          <ControlPanel aura={aura} setAura={setAura} />
+          <ShapeControlPanel aura={aura} setAura={setAura} />
 
           <div className="mt-auto border-t border-border px-5 py-4">
             <p className="text-[11px] leading-relaxed text-muted-foreground">

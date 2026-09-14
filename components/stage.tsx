@@ -122,6 +122,7 @@ export function Stage({ aura, canvasRef, onError, exportWidth }: StageProps) {
         uGrain: p.grainOn ? p.grain : 0,
         uGrainSize: p.grainSize,
         uHoverStrength: p.hoverStrength,
+        uCursorExpand: p.cursorExpand,
         uMidBurn: p.midBurn ? 1 : 0,
         uColCore: hexToRgb(p.colCore),
         uColMid: hexToRgb(p.colMid),
