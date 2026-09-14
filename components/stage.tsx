@@ -42,6 +42,12 @@ export function Stage({ aura, canvasRef, onError, exportWidth }: StageProps) {
   // the lobe can never snap, regardless of how fast the cursor moves.
   const smoothAngleRef = useRef(0)
   const smoothDistRef = useRef(0)
+  // Drives Shape Studio's opt-in cursor-expansion effect (inert whenever
+  // cursorExpand is 0, i.e. always on Aura's own page) -- kept fully
+  // separate from the hover/wobble easing above so tuning its response
+  // time can never change Aura's own motion.
+  const expansionRef = useRef(0)
+  const lastFrameAtRef = useRef(0)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -108,6 +114,20 @@ export function Stage({ aura, canvasRef, onError, exportWidth }: StageProps) {
       ]
 
       const p = auraRef.current
+
+      // Monotonic 0..1: how far the cursor currently sits from center,
+      // clamped at the shape's own size so it saturates rather than
+      // growing unbounded far off-canvas -- always live (not gated by
+      // hover enter/leave), with a framerate-independent ease tuned to
+      // settle in ~0.6s.
+      const now = performance.now()
+      const dt = lastFrameAtRef.current ? (now - lastFrameAtRef.current) / 1000 : 1 / 60
+      lastFrameAtRef.current = now
+      const targetExpansion = Math.min(1, rawDist / Math.max(p.size, 0.0001))
+      const expansionTau = 0.2 // seconds; ~3 tau === 0.6s to fully settle
+      const expansionAlpha = 1 - Math.exp(-dt / expansionTau)
+      expansionRef.current += (targetExpansion - expansionRef.current) * expansionAlpha
+
       const uniforms: Uniforms = {
         uTime: time,
         uMouse: smoothMouse,
@@ -123,6 +143,7 @@ export function Stage({ aura, canvasRef, onError, exportWidth }: StageProps) {
         uGrainSize: p.grainSize,
         uHoverStrength: p.hoverStrength,
         uCursorExpand: p.cursorExpand,
+        uExpansionAmount: expansionRef.current,
         uMidBurn: p.midBurn ? 1 : 0,
         uColCore: hexToRgb(p.colCore),
         uColMid: hexToRgb(p.colMid),

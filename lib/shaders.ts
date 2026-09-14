@@ -84,10 +84,12 @@ uniform float uGradient;    // how much the gradient bands drift out of sync
 uniform float uGrain;       // grain amount
 uniform float uGrainSize;   // grain cell size, in device pixels
 uniform float uHoverStrength; // how much the cursor magnifies nearby wobble
-uniform float uCursorExpand; // 0..1, opt-in: widen the blur/edge near the cursor's actual
-                              // screen position (a real per-pixel proximity mask, not the
-                              // angle-based rim wobble above) -- 0 leaves every other caller
-                              // of this shader (Aura's own page) completely unaffected.
+uniform float uCursorExpand; // 0..1, opt-in strength of the effect below -- 0 leaves every
+                              // other caller of this shader (Aura's own page) unaffected.
+uniform float uExpansionAmount; // 0..1, pre-eased in JS: how far the cursor currently sits
+                              // from the shape's center, monotonic (not a bell curve) and
+                              // always live regardless of hover enter/leave -- multiplied by
+                              // uCursorExpand below, so it's inert whenever that's 0.
 uniform float uMidBurn;    // 0/1: blend the mid color in with a Color Burn instead of a linear mix
 uniform vec3  uColCore;
 uniform vec3  uColMid;
@@ -154,16 +156,17 @@ void main(){
   // and mid expand into it, instead of staying essentially the same size
   float edgeR = uSize * mix(1.0, 1.12, phi * breathAmt) * (1.0 + g2 * 0.02);
 
-  // Cursor-driven blur expansion (opt-in via uCursorExpand, 0 = inert):
-  // reuses "attract" above -- how close the cursor is to the shape's own
-  // rim, already a single scalar rather than a raw per-pixel screen
-  // position -- so the whole shape's edge widens together as the cursor
-  // nears it, the same way tympanus.net's SDF lens blur widens its
-  // antialiasing band near the cursor. A raw per-pixel distance-to-cursor
+  // Cursor-driven blur expansion (opt-in via uCursorExpand, 0 = inert): the
+  // whole shape's edge widens together as the cursor moves away from
+  // center, the same way tympanus.net's SDF lens blur widens its
+  // antialiasing band near the cursor -- monotonic and always live
+  // (uExpansionAmount, pre-eased in JS), not gated by hover enter/leave and
+  // not the bell-curve "attract" above, which peaks at the rim and fades
+  // both toward center and further out. A raw per-pixel distance-to-cursor
   // mask was tried first and rejected: it could widen the threshold for
   // background pixels far from the shape too, leaving a disconnected soft
   // patch hovering at the cursor's position independent of the shape itself.
-  float blurExpand = 1.0 + uHover * uCursorExpand * attract * 3.0;
+  float blurExpand = 1.0 + uCursorExpand * uExpansionAmount * 3.0;
 
   float blur = uSize * 0.516 * (uSoftness / 0.4) * blurExpand;
 
