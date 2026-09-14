@@ -26,6 +26,8 @@ uniform float uHoverIntensity; // 0..1, eased lens strength
 uniform float uCenterDamp;     // 0..1, how much to cut the lens when hovering deep inside the shape
 uniform float uHoverColorAmount; // 0..1, how far shape color tints toward hover color at its stop
 uniform float uColorBlendSoftness; // 0..1, how gradually shape color melts into hover color
+uniform float uRestBlur;       // 0..1 of shapeSize, blur applied everywhere even without hover
+uniform float uGrain;          // 0..1, film-grain strength (both tonal noise and gradient dithering)
 uniform vec3  uColBg;
 uniform vec3  uColShape;
 uniform vec3  uColHover;       // shows only in the blurred transition band, at its outer edge
@@ -34,6 +36,12 @@ uniform vec3  uColHover;       // shows only in the blurred transition band, at 
 float roundedBoxSdf(vec2 p, vec2 halfSize, float radius) {
   vec2 q = abs(p) - halfSize + radius;
   return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
+}
+
+// Cheap per-pixel pseudo-random noise (no texture lookup needed) — good
+// enough for grain/dithering, not for anything that needs true randomness.
+float hash(vec2 p) {
+  return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453123);
 }
 
 void main() {
@@ -51,9 +59,9 @@ void main() {
   // looming over an increasingly small shape. Blur radius peaks at the
   // cursor and eases to zero by its rim.
   float shapeSize = 2.0 * min(halfSize.x, halfSize.y);
-  float lensRadius = 0.7 * shapeSize;
+  float lensRadius = 1.1 * shapeSize;
   float falloff = 1.0 - smoothstep(0.0, lensRadius, length(gl_FragCoord.xy - uMouse));
-  float maxBlur = 0.6 * shapeSize;
+  float maxBlur = 0.9 * shapeSize;
 
   // How deep the cursor itself currently sits inside the shape (not this
   // fragment) — evaluate the same SDF at the mouse position so hovering
@@ -70,7 +78,12 @@ void main() {
   // share of the interior crisp, not just the exact center point.
   float centerReduction = 1.0 - uCenterDamp * sqrt(centerDepth);
 
-  float blur = max(uHoverIntensity * maxBlur * falloff * centerReduction, 1.0); // 1px floor keeps a clean edge at rest
+  // uRestBlur sets a floor on the transition width itself (as a fraction of
+  // the shape's own size) so the edge reads as permanently soft everywhere,
+  // not just under the cursor -- the hover lens then only has to add extra
+  // blur on top of that baseline rather than create softness from nothing.
+  float restBlurPx = uRestBlur * shapeSize;
+  float blur = max(max(uHoverIntensity * maxBlur * falloff * centerReduction, restBlurPx), 1.0);
 
   // Three sequential stops — shape, then hover color, then background —
   // chained so each mix starts from the previous one's result instead of
@@ -83,8 +96,13 @@ void main() {
   // radius, so the whole gradient only has room to unfold once the lens
   // has actually widened that transition, and collapses back to a plain
   // two-color edge (no visible hover color) once blur shrinks back down
-  // to its resting 1px floor.
+  // to its resting floor.
   float t = clamp(sdf / blur, -1.0, 1.0);
+  // Jitter t by per-pixel noise before it drives the color stops below, so
+  // the shape-to-hover-to-background gradient dithers into a mottled mix of
+  // tones right in the band instead of perfectly smooth flat color, and the
+  // grain doesn't read as a separate overlay sitting on top of a flat fill.
+  t = clamp(t + (hash(gl_FragCoord.xy) - 0.5) * uGrain * 0.25, -1.0, 1.0);
   // The shape-to-hover stop's far edge slides outward as softness goes up,
   // stretching that transition across more of the band instead of ramping
   // to full hover color quickly and holding a hard plateau — at 0 it's the
@@ -102,6 +120,12 @@ void main() {
   vec3 col = mix(uColShape, uColHover, shapeToHover * uHoverColorAmount);
   col = mix(col, uColBg, hoverToBg);
 
-  gl_FragColor = vec4(col, 1.0);
+  // A second, independent noise sample as fine tonal grain over the final
+  // color (not the gradient-dithering sample above, so the two don't lock
+  // into the same pattern) -- a subtle all-over texture rather than a flat
+  // digital-looking fill.
+  col += (hash(gl_FragCoord.xy + 17.0) - 0.5) * uGrain * 0.06;
+
+  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
 }
 `
