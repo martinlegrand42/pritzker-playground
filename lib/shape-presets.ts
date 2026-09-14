@@ -15,8 +15,6 @@ export interface ShapeParams {
   colorBlendSoftness: number
   centerBlurReduction: number
   zoom: number
-  restBlur: number
-  grain: number
 }
 
 export const SHAPE_LIMITS = {
@@ -46,11 +44,9 @@ export const SHAPE_DEFAULT: ShapeParams = {
   hoverIntensity: 1,
   hoverColor: '#327fef',
   hoverColorAmount: 1,
-  colorBlendSoftness: 0.85,
-  centerBlurReduction: 0.65,
-  zoom: 0.38,
-  restBlur: 0.18,
-  grain: 0.3,
+  colorBlendSoftness: 0.7,
+  centerBlurReduction: 0.45,
+  zoom: 0.42,
 }
 
 // Round-trips the full params blob through a URL-safe query value, so a
