@@ -2,24 +2,35 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Clapperboard, Download, ImageDown, Link2, RotateCcw } from 'lucide-react'
-import { ShapeStage } from './shape-stage'
-import { ShapeControlPanel } from './shape-control-panel'
+import { Stage } from './stage'
+import { ControlPanel } from './control-panel'
 import { StudioNav } from './studio-nav'
 import { exportPng, recordLoop, downloadVideo } from '@/lib/export'
 import { loadPersisted, savePersisted } from '@/lib/persist'
-import { SHAPE_DEFAULT, encodeShapeParams, decodeShapeParams, type ShapeParams } from '@/lib/shape-presets'
+import { AURA_DEFAULT, type AuraParams } from '@/lib/presets'
 
 const SHARE_PARAM = 's'
 
-// Bumped whenever a default value changes meaningfully — every prior
-// change saved the *entire* params blob on any edit, including fields
-// the user never touched, so an old save silently overrides a new
-// default forever otherwise. Bumping this makes everyone pick up the
-// new always-on baseline softness instead of a stale pre-softness save.
-const STORAGE_KEY = 'pritzker-identity-studio:shape:v4'
+// Reuses Aura's own mark (Stage + AuraParams) as Shape Studio's shape --
+// the three-separately-blurred-circles technique it's built on already
+// produces the soft, layered look this tab was after, rather than the
+// earlier SDF rounded-rect lens-blur approach fighting to approximate it.
+function encodeAuraParams(params: AuraParams): string {
+  return btoa(JSON.stringify(params))
+}
+
+function decodeAuraParams(encoded: string): Partial<AuraParams> | null {
+  try {
+    return JSON.parse(atob(encoded))
+  } catch {
+    return null
+  }
+}
+
+const STORAGE_KEY = 'pritzker-identity-studio:shape:v5'
 
 export function ShapePlayground() {
-  const [shape, setShapeState] = useState<ShapeParams>(SHAPE_DEFAULT)
+  const [aura, setAuraState] = useState<AuraParams>(AURA_DEFAULT)
   const [error, setError] = useState<string | null>(null)
 
   const [recording, setRecording] = useState(false)
@@ -35,21 +46,21 @@ export function ShapePlayground() {
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const encoded = new URLSearchParams(window.location.search).get(SHARE_PARAM)
-    const fromUrl = encoded ? decodeShapeParams(encoded) : null
+    const fromUrl = encoded ? decodeAuraParams(encoded) : null
     if (fromUrl) {
-      setShapeState((p) => ({ ...p, ...fromUrl }))
+      setAuraState((p) => ({ ...p, ...fromUrl }))
       return
     }
-    const saved = loadPersisted<ShapeParams>(STORAGE_KEY)
-    if (saved) setShapeState((p) => ({ ...p, ...saved }))
+    const saved = loadPersisted<AuraParams>(STORAGE_KEY)
+    if (saved) setAuraState((p) => ({ ...p, ...saved }))
   }, [])
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const setShape = (next: ShapeParams) => {
-    setShapeState(next)
-    savePersisted<ShapeParams>(STORAGE_KEY, next)
+  const setAura = (next: AuraParams) => {
+    setAuraState(next)
+    savePersisted<AuraParams>(STORAGE_KEY, next)
     const url = new URL(window.location.href)
-    url.searchParams.set(SHARE_PARAM, encodeShapeParams(next))
+    url.searchParams.set(SHARE_PARAM, encodeAuraParams(next))
     window.history.replaceState(null, '', url)
   }
 
@@ -64,7 +75,7 @@ export function ShapePlayground() {
     return () => clearTimeout(t)
   }, [toast])
 
-  const handleReset = () => setShape(SHAPE_DEFAULT)
+  const handleReset = () => setAura(AURA_DEFAULT)
 
   const handleExportPng = () => {
     const canvas = canvasRef.current
@@ -94,31 +105,6 @@ export function ShapePlayground() {
       },
     )
   }
-
-  const ratio = shape.widthPx / shape.heightPx
-
-  // Measured directly (not via CSS aspect-ratio + a width cap) because
-  // that approach breaks down whenever the panel's available height is
-  // the tighter constraint: an auto height computed from aspect-ratio
-  // still gets silently clipped by max-height, unlinking it from width
-  // and quietly turning a square/circle into a rectangle/ellipse.
-  const stageRef = useRef<HTMLDivElement | null>(null)
-  const [stageSize, setStageSize] = useState({ w: 600, h: 600 })
-  useEffect(() => {
-    const el = stageRef.current
-    if (!el) return
-    const ro = new ResizeObserver(([entry]) => {
-      setStageSize({ w: entry.contentRect.width, h: entry.contentRect.height })
-    })
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
-
-  const fitWidth = Math.min(stageSize.w, stageSize.h * ratio)
-  const fitHeight = fitWidth / ratio
-  const boxScale = Math.min(1, 900 / Math.max(fitWidth, fitHeight, 1))
-  const boxWidth = fitWidth * boxScale
-  const boxHeight = fitHeight * boxScale
 
   return (
     <main className="flex min-h-screen flex-col bg-background lg:h-screen lg:overflow-hidden">
@@ -158,17 +144,11 @@ export function ShapePlayground() {
       {/* Body */}
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         {/* Stage */}
-        <div
-          ref={stageRef}
-          className="relative flex min-h-[52vh] flex-1 items-center justify-center overflow-hidden p-4 md:p-8 lg:min-h-0"
-        >
+        <div className="relative flex min-h-[52vh] flex-1 items-center justify-center overflow-hidden p-4 md:p-8 lg:min-h-0">
           <StageGrid />
 
-          <div
-            className="relative z-[1] overflow-hidden shadow-[0_20px_60px_-24px_rgba(20,30,80,0.35)] ring-1 ring-black/5"
-            style={{ width: boxWidth, height: boxHeight }}
-          >
-            <ShapeStage shape={shape} canvasRef={canvasRef} onError={setError} />
+          <div className="relative z-[1] h-full w-full max-w-[900px] overflow-hidden shadow-[0_20px_60px_-24px_rgba(20,30,80,0.35)] ring-1 ring-black/5">
+            <Stage aura={aura} canvasRef={canvasRef} onError={setError} />
             {error ? (
               <div className="absolute inset-0 flex items-center justify-center bg-secondary/95 p-6 text-center text-sm text-muted-foreground">
                 {error}
@@ -183,17 +163,17 @@ export function ShapePlayground() {
             <div>
               <p className="text-sm font-semibold">Shape</p>
               <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                A bounded primitive
+                Aura&apos;s mark, reused
               </p>
             </div>
           </div>
 
-          <ShapeControlPanel shape={shape} setShape={setShape} />
+          <ControlPanel aura={aura} setAura={setAura} />
 
           <div className="mt-auto border-t border-border px-5 py-4">
             <p className="text-[11px] leading-relaxed text-muted-foreground">
-              A plain or bordered rounded rectangle. Move the cursor near its edge to defocus it
-              locally, like a lens — then export a still or a 6-second loop.
+              The same breathing, wobbly gradient mark as Aura — move the cursor near it, then
+              export a still or a 6-second loop.
             </p>
           </div>
         </aside>
