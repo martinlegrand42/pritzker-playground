@@ -164,12 +164,10 @@ void main(){
   // of wobbling independently
   float rrEff = rr - wob;
 
-  // the edge circle gets a little less blur than core/mid so its own color
-  // still reads as a distinct band, but close enough to the core/mid blur
-  // that the two don't visibly desync at the boundary between them -- at
-  // 0.6 (much narrower) that mismatch showed up as a faint lighter ring
-  // right where mid's wider fade met edge's much narrower one.
-  float edgeBlur = blur * 0.85;
+  // the edge circle gets a bit less blur than core/mid so its own color
+  // reads as a clearer band before fading into the background, instead of
+  // dissolving at the same rate as everything else
+  float edgeBlur = blur * 0.6;
 
   // Cursor-driven layer expansion (opt-in via uCursorExpand, 0 = inert):
   // each layer bulges specifically toward wherever the cursor is vertically
@@ -189,22 +187,9 @@ void main(){
   float rrEffMid = rrEff - expand * uSize * 1.05;
   float rrEffEdge = rrEff - expand * uSize * 2.7;
 
-  // The side directly opposite the cursor (e.g. the bottom, when the
-  // cursor is above) gets progressively crisper as the cursor moves
-  // further away, instead of blurring by the same amount everywhere --
-  // reads as the shape reaching softly toward the cursor while staying
-  // comparatively defined on the far side, matching the original
-  // reference look. vLobeOpp mirrors vLobe but centered on the opposite
-  // angle; the reduction is capped well short of 1 so that side still
-  // gets a clean antialiased edge, never a hard aliased one.
-  float vLobeOpp = exp(-(1.0 - cos(ang - (vMouseAng + 3.14159265358979))) * 2.2);
-  float blurReduce = 1.0 - uCursorExpand * abs(uVerticalExpansion) * vLobeOpp * 0.7;
-  float blurLocal = max(blur * blurReduce, 1.0);
-  float edgeBlurLocal = max(edgeBlur * blurReduce, 1.0);
-
-  float coreA = 1.0 - smoothstep(coreR - blurLocal, coreR + blurLocal, rrEffCore);
-  float midA = 1.0 - smoothstep(midR - blurLocal, midR + blurLocal, rrEffMid);
-  float edgeA = 1.0 - smoothstep(edgeR - edgeBlurLocal, edgeR + edgeBlurLocal, rrEffEdge);
+  float coreA = 1.0 - smoothstep(coreR - blur, coreR + blur, rrEffCore);
+  float midA = 1.0 - smoothstep(midR - blur, midR + blur, rrEffMid);
+  float edgeA = 1.0 - smoothstep(edgeR - edgeBlur, edgeR + edgeBlur, rrEffEdge);
 
   vec3 col = mix(uColBg, uColEdge, edgeA);
   vec3 midNormal = mix(col, uColMid, midA);
