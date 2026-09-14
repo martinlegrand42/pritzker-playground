@@ -34,6 +34,7 @@ function decodeAuraParams(encoded: string): Partial<AuraParams> | null {
 const SHAPE_DEFAULT: AuraParams = {
   ...AURA_DEFAULT,
   size: 0.2,
+  softness: 0.2,
   breath: 0,
   breathSpeed: 0,
   wobble: 0,
@@ -52,7 +53,7 @@ const SHAPE_DEFAULT: AuraParams = {
   midBurn: false,
 }
 
-const STORAGE_KEY = 'pritzker-identity-studio:shape:v10'
+const STORAGE_KEY = 'pritzker-identity-studio:shape:v11'
 
 export function ShapePlayground() {
   const [aura, setAuraState] = useState<AuraParams>(SHAPE_DEFAULT)
