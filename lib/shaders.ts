@@ -191,9 +191,22 @@ void main(){
   float rrEffMid = rrEff - expand * uSize * 1.05;
   float rrEffEdge = rrEff - expand * uSize * 2.7;
 
-  float coreA = 1.0 - smoothstep(coreR - blur, coreR + blur, rrEffCore);
-  float midA = 1.0 - smoothstep(midR - blur, midR + blur, rrEffMid);
-  float edgeA = 1.0 - smoothstep(edgeR - edgeBlur, edgeR + edgeBlur, rrEffEdge);
+  // Each layer stretches by a different amount (edge most, core least), so
+  // the gap between adjacent layers' boundaries widens as expansion grows
+  // -- up to ~1.65*uSize between mid and edge alone at full expansion. The
+  // fixed blur widths above were sized for the resting, close-together
+  // layers; left unchanged, that gap opens up faster than the blur can
+  // bridge it, leaving a flat, unblended plateau of pure edge color in
+  // between -- the "lighter halo" this was meant to fix wasn't Color Burn,
+  // it was this. Widening blur along with the expansion (same 0 = inert
+  // whenever uCursorExpand is 0) keeps the transition continuous instead.
+  float blurGrow = 1.0 + expand * 3.0;
+  float blurLocal = blur * blurGrow;
+  float edgeBlurLocal = edgeBlur * blurGrow;
+
+  float coreA = 1.0 - smoothstep(coreR - blurLocal, coreR + blurLocal, rrEffCore);
+  float midA = 1.0 - smoothstep(midR - blurLocal, midR + blurLocal, rrEffMid);
+  float edgeA = 1.0 - smoothstep(edgeR - edgeBlurLocal, edgeR + edgeBlurLocal, rrEffEdge);
 
   vec3 col = mix(uColBg, uColEdge, edgeA);
   vec3 midNormal = mix(col, uColMid, midA);
