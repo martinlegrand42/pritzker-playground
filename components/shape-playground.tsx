@@ -33,7 +33,7 @@ function decodeAuraParams(encoded: string): Partial<AuraParams> | null {
 
 const SHAPE_DEFAULT: AuraParams = {
   ...AURA_DEFAULT,
-  size: 0.4,
+  size: 0.2,
   breath: 0,
   breathSpeed: 0,
   wobble: 0,
