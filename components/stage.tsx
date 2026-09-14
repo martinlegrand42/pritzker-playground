@@ -144,6 +144,7 @@ export function Stage({ aura, canvasRef, onError, exportWidth }: StageProps) {
         uGrain: p.grainOn ? p.grain : 0,
         uGrainSize: p.grainSize,
         uHoverStrength: p.hoverStrength,
+        uEdgeBlurRatio: p.edgeBlurRatio,
         uCursorExpand: p.cursorExpand,
         uVerticalExpansion: verticalExpansionRef.current,
         uMidBurn: p.midBurn ? 1 : 0,

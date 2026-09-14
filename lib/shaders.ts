@@ -84,6 +84,7 @@ uniform float uGradient;    // how much the gradient bands drift out of sync
 uniform float uGrain;       // grain amount
 uniform float uGrainSize;   // grain cell size, in device pixels
 uniform float uHoverStrength; // how much the cursor magnifies nearby wobble
+uniform float uEdgeBlurRatio; // edge layer's blur as a fraction of core/mid's shared blur
 uniform float uCursorExpand; // 0..1, opt-in strength of the effect below -- 0 leaves every
                               // other caller of this shader (Aura's own page) unaffected.
 uniform float uVerticalExpansion; // -1..1, pre-eased in JS: the cursor's vertical-only offset
@@ -166,8 +167,11 @@ void main(){
 
   // the edge circle gets a bit less blur than core/mid so its own color
   // reads as a clearer band before fading into the background, instead of
-  // dissolving at the same rate as everything else
-  float edgeBlur = blur * 0.6;
+  // dissolving at the same rate as everything else. Configurable (not a
+  // hardcoded constant) because this affects every caller of this shader
+  // unconditionally -- Aura's own page keeps its original 0.6 exactly, and
+  // only Shape Studio's own default raises it.
+  float edgeBlur = blur * uEdgeBlurRatio;
 
   // Cursor-driven layer expansion (opt-in via uCursorExpand, 0 = inert):
   // each layer bulges specifically toward wherever the cursor is vertically

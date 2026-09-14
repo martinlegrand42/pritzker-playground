@@ -40,9 +40,10 @@ const SHAPE_DEFAULT: AuraParams = {
   hoverReact: false,
   hoverStrength: 0,
   cursorExpand: 0.7,
+  edgeBlurRatio: 0.85,
 }
 
-const STORAGE_KEY = 'pritzker-identity-studio:shape:v8'
+const STORAGE_KEY = 'pritzker-identity-studio:shape:v9'
 
 export function ShapePlayground() {
   const [aura, setAuraState] = useState<AuraParams>(SHAPE_DEFAULT)
