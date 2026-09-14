@@ -43,7 +43,7 @@ const SHAPE_DEFAULT: AuraParams = {
   hoverStrength: 0,
   cursorExpand: 0.7,
   edgeBlurRatio: 0.85,
-  edgeSizeRatio: 0.68,
+  edgeSizeRatio: 0.75,
   midSizeRatio: 0.95,
   // Color Burn barely darkens a light backdrop (its math divides by the
   // burn color, so a near-white backdrop stays near-white regardless of
@@ -53,7 +53,7 @@ const SHAPE_DEFAULT: AuraParams = {
   midBurn: false,
 }
 
-const STORAGE_KEY = 'pritzker-identity-studio:shape:v12'
+const STORAGE_KEY = 'pritzker-identity-studio:shape:v13'
 
 export function ShapePlayground() {
   const [aura, setAuraState] = useState<AuraParams>(SHAPE_DEFAULT)
