@@ -14,9 +14,9 @@ const SHARE_PARAM = 's'
 // Bumped whenever a default value changes meaningfully — every prior
 // change saved the *entire* params blob on any edit, including fields
 // the user never touched, so an old save silently overrides a new
-// default forever otherwise. Bumping this makes everyone pick up
-// today's centerBlurReduction default instead of a stale 50%.
-const STORAGE_KEY = 'pritzker-identity-studio:shape:v2'
+// default forever otherwise. Bumping this makes everyone pick up the
+// new rounder, more compact circle default instead of the old rectangle.
+const STORAGE_KEY = 'pritzker-identity-studio:shape:v3'
 
 export function ShapePlayground() {
   const [shape, setShapeState] = useState<ShapeParams>(SHAPE_DEFAULT)

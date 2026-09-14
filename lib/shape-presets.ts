@@ -34,19 +34,19 @@ export const SHAPE_TYPE_SIZE: Record<ShapeType, { widthPx: number; heightPx: num
 }
 
 export const SHAPE_DEFAULT: ShapeParams = {
-  shapeType: 'rectangle',
-  ...SHAPE_TYPE_SIZE.rectangle,
+  shapeType: 'circle',
+  ...SHAPE_TYPE_SIZE.circle,
   bgColor: '#fafaff',
   shapeColor: '#0031a7',
   radiusPx: 48,
   bordered: false,
   borderWidthPx: 10,
-  hoverIntensity: 0.6,
+  hoverIntensity: 1,
   hoverColor: '#327fef',
   hoverColorAmount: 1,
-  colorBlendSoftness: 0.6,
-  centerBlurReduction: 1,
-  zoom: 1,
+  colorBlendSoftness: 0.7,
+  centerBlurReduction: 0.45,
+  zoom: 0.42,
 }
 
 // Round-trips the full params blob through a URL-safe query value, so a
