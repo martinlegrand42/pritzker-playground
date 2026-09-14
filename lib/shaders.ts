@@ -86,10 +86,11 @@ uniform float uGrainSize;   // grain cell size, in device pixels
 uniform float uHoverStrength; // how much the cursor magnifies nearby wobble
 uniform float uCursorExpand; // 0..1, opt-in strength of the effect below -- 0 leaves every
                               // other caller of this shader (Aura's own page) unaffected.
-uniform float uExpansionAmount; // 0..1, pre-eased in JS: how far the cursor currently sits
-                              // from the shape's center, monotonic (not a bell curve) and
-                              // always live regardless of hover enter/leave -- multiplied by
-                              // uCursorExpand below, so it's inert whenever that's 0.
+uniform float uVerticalExpansion; // -1..1, pre-eased in JS: the cursor's vertical-only offset
+                              // from center (horizontal position ignored entirely), positive
+                              // above center / negative below -- always live regardless of
+                              // hover enter/leave, multiplied by uCursorExpand below, so it's
+                              // inert whenever that's 0.
 uniform float uMidBurn;    // 0/1: blend the mid color in with a Color Burn instead of a linear mix
 uniform vec3  uColCore;
 uniform vec3  uColMid;
@@ -169,20 +170,22 @@ void main(){
   float edgeBlur = blur * 0.6;
 
   // Cursor-driven layer expansion (opt-in via uCursorExpand, 0 = inert):
-  // each layer bulges specifically toward wherever the cursor actually is,
-  // reusing "lobe" (how aligned this fragment's angle from center is with
-  // the cursor's own angle from center) so the growth has a real focal
-  // point at the cursor's position instead of inflating the whole shape
-  // uniformly in every direction -- monotonic with distance from center
-  // and always live (uExpansionAmount, pre-eased in JS), not gated by
-  // hover enter/leave. Edge stretches the most, mid a bit less, core the
-  // least. An earlier version scaled coreR/midR/edgeR directly, which grew
-  // the shape symmetrically around its own center regardless of cursor
-  // direction -- exactly the "proportional scaling" this replaces.
-  float expand = uCursorExpand * uExpansionAmount * lobe;
-  float rrEffCore = rrEff - expand * uSize * 0.08;
-  float rrEffMid = rrEff - expand * uSize * 0.35;
-  float rrEffEdge = rrEff - expand * uSize * 0.9;
+  // each layer bulges specifically toward wherever the cursor is vertically
+  // -- horizontal cursor position has zero effect, and the bulge only ever
+  // points straight up or straight down, never sideways. vLobe is the same
+  // bell-curve shape as "lobe" above, but measured against a reference
+  // angle snapped to straight up/down (based on the sign of
+  // uVerticalExpansion) instead of the cursor's actual, possibly diagonal,
+  // angle from center -- so only fragments near the top or bottom of the
+  // shape (whichever the cursor is vertically nearer to) bulge outward.
+  // Edge stretches the most, mid a bit less, core the least. Magnitude
+  // tripled per request ("increase by 200%"): 0.08/0.35/0.9 -> 0.24/1.05/2.7.
+  float vMouseAng = uVerticalExpansion >= 0.0 ? 1.5707963267948966 : -1.5707963267948966;
+  float vLobe = exp(-(1.0 - cos(ang - vMouseAng)) * 2.2);
+  float expand = uCursorExpand * abs(uVerticalExpansion) * vLobe;
+  float rrEffCore = rrEff - expand * uSize * 0.24;
+  float rrEffMid = rrEff - expand * uSize * 1.05;
+  float rrEffEdge = rrEff - expand * uSize * 2.7;
 
   float coreA = 1.0 - smoothstep(coreR - blur, coreR + blur, rrEffCore);
   float midA = 1.0 - smoothstep(midR - blur, midR + blur, rrEffMid);
