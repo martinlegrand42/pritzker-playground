@@ -188,10 +188,17 @@ void main(){
   // tripled per request ("increase by 200%"): 0.08/0.35/0.9 -> 0.24/1.05/2.7.
   float vMouseAng = uVerticalExpansion >= 0.0 ? 1.5707963267948966 : -1.5707963267948966;
   float vLobe = exp(-(1.0 - cos(ang - vMouseAng)) * 2.2);
+  // Mirrors vLobe but centered on the angle opposite the cursor's vertical
+  // direction, so it's large exactly where vLobe is near zero -- used
+  // below to pull mid/edge in a little on the far side (not core, and not
+  // just their blur) so that side reads as slightly contracted rather
+  // than merely "not expanded".
+  float vLobeOpp = exp(-(1.0 - cos(ang - (vMouseAng + 3.14159265358979))) * 2.2);
   float expand = uCursorExpand * abs(uVerticalExpansion) * vLobe;
+  float contract = uCursorExpand * abs(uVerticalExpansion) * vLobeOpp;
   float rrEffCore = rrEff - expand * uSize * 0.24;
-  float rrEffMid = rrEff - expand * uSize * 1.05;
-  float rrEffEdge = rrEff - expand * uSize * 2.7;
+  float rrEffMid = rrEff - expand * uSize * 1.05 + contract * uSize * 0.15;
+  float rrEffEdge = rrEff - expand * uSize * 2.7 + contract * uSize * 0.25;
 
   // Each layer stretches by a different amount (edge most, core least), so
   // the gap between adjacent layers' boundaries widens as expansion grows
@@ -209,12 +216,8 @@ void main(){
   // further away, instead of just sitting at the resting blur while the
   // near side puffs up -- reads as the shape reaching softly toward the
   // cursor while staying comparatively defined on the far side, matching
-  // the reference look. vLobeOpp mirrors vLobe but centered on the
-  // opposite angle, so it's large exactly where vLobe (and blurGrow) is
-  // near zero -- the two don't fight each other. Reduction is capped well
-  // short of 1 so that side still gets a clean antialiased edge, never a
-  // hard aliased one.
-  float vLobeOpp = exp(-(1.0 - cos(ang - (vMouseAng + 3.14159265358979))) * 2.2);
+  // the reference look. Reduction is capped just short of 1 so that side
+  // still gets a clean antialiased edge, never a fully hard aliased one.
   float blurReduce = 1.0 - uCursorExpand * abs(uVerticalExpansion) * vLobeOpp * 0.95;
 
   float blurLocal = blur * blurGrow * blurReduce;
