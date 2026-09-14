@@ -203,8 +203,22 @@ void main(){
   // it was this. Widening blur along with the expansion (same 0 = inert
   // whenever uCursorExpand is 0) keeps the transition continuous instead.
   float blurGrow = 1.0 + expand * 3.0;
-  float blurLocal = blur * blurGrow;
-  float edgeBlurLocal = edgeBlur * blurGrow;
+
+  // The side directly opposite the cursor (e.g. the bottom, when the
+  // cursor is above) gets progressively crisper as the cursor moves
+  // further away, instead of just sitting at the resting blur while the
+  // near side puffs up -- reads as the shape reaching softly toward the
+  // cursor while staying comparatively defined on the far side, matching
+  // the reference look. vLobeOpp mirrors vLobe but centered on the
+  // opposite angle, so it's large exactly where vLobe (and blurGrow) is
+  // near zero -- the two don't fight each other. Reduction is capped well
+  // short of 1 so that side still gets a clean antialiased edge, never a
+  // hard aliased one.
+  float vLobeOpp = exp(-(1.0 - cos(ang - (vMouseAng + 3.14159265358979))) * 2.2);
+  float blurReduce = 1.0 - uCursorExpand * abs(uVerticalExpansion) * vLobeOpp * 0.7;
+
+  float blurLocal = blur * blurGrow * blurReduce;
+  float edgeBlurLocal = edgeBlur * blurGrow * blurReduce;
 
   float coreA = 1.0 - smoothstep(coreR - blurLocal, coreR + blurLocal, rrEffCore);
   float midA = 1.0 - smoothstep(midR - blurLocal, midR + blurLocal, rrEffMid);
