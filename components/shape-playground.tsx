@@ -52,7 +52,7 @@ const SHAPE_DEFAULT: AuraParams = {
   midBurn: false,
 }
 
-const STORAGE_KEY = 'pritzker-identity-studio:shape:v9'
+const STORAGE_KEY = 'pritzker-identity-studio:shape:v10'
 
 export function ShapePlayground() {
   const [aura, setAuraState] = useState<AuraParams>(SHAPE_DEFAULT)
