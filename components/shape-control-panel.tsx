@@ -30,14 +30,10 @@ export function ShapeControlPanel({ aura, setAura }: ShapeControlPanelProps) {
       <Section title="Form">
         <Slider label="Size" value={aura.size} min={0.2} max={0.6} onChange={(v) => setAura({ ...aura, size: v })} />
         <Slider label="Softness" value={aura.softness} min={0.05} max={0.9} onChange={(v) => setAura({ ...aura, softness: v })} />
-        <Slider label="Wobble" value={aura.wobble} min={0} max={0.16} onChange={(v) => setAura({ ...aura, wobble: v })} />
-        <Slider label="Wobble speed" value={aura.wobbleSpeed} min={0.05} max={1.2} onChange={(v) => setAura({ ...aura, wobbleSpeed: v })} />
       </Section>
 
       <Section title="Motion">
         <Slider label="Gradient drift" value={aura.gradient} min={0} max={1} onChange={(v) => setAura({ ...aura, gradient: v })} />
-        <Toggle label="React to hover" checked={aura.hoverReact} onChange={(v) => setAura({ ...aura, hoverReact: v })} />
-        <Slider label="Hover intensity" value={aura.hoverStrength} min={0} max={0.6} onChange={(v) => setAura({ ...aura, hoverStrength: v })} />
         <Slider
           label="Cursor threshold expansion"
           value={aura.cursorExpand}
