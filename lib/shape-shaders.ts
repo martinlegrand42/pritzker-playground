@@ -78,35 +78,28 @@ void main() {
   float restBlurPx = uRestBlur * shapeSize;
   float blur = max(max(uHoverIntensity * maxBlur * falloff * centerReduction, restBlurPx), 1.0);
 
-  // Three sequential stops — shape, then hover color, then background —
-  // chained so each mix starts from the previous one's result instead of
-  // two independent shape-to-background and color-to-hover blends. Doing
-  // it as two independent blends (an earlier version of this) let the
-  // background show through faintly before the hover color had fully
-  // taken over, since both were being mixed toward at once; chaining
-  // guarantees the hover color is a mandatory waypoint with no gap where
-  // background leaks in early. sdf is normalized by the current blur
-  // radius, so the whole gradient only has room to unfold once the lens
-  // has actually widened that transition, and collapses back to a plain
-  // two-color edge (no visible hover color) once blur shrinks back down
-  // to its resting 1px floor.
+  // A single continuous piecewise gradient (shape -> hover -> background),
+  // built so the two segments are mathematically guaranteed to meet at the
+  // same color instead of being tuned to line up -- following the
+  // reference's approach of one continuous antialiased transition rather
+  // than independently-bounded blends that can leave a visible seam where
+  // they meet. sdf is normalized by the current blur radius, so the whole
+  // gradient only has room to unfold once the lens has actually widened
+  // that transition, and collapses back to a plain two-color edge once
+  // blur shrinks back down to its resting floor.
   float t = clamp(sdf / blur, -1.0, 1.0);
-  // The shape-to-hover stop's far edge slides outward as softness goes up,
-  // stretching that transition across more of the band instead of ramping
-  // to full hover color quickly and holding a hard plateau — at 0 it's the
-  // original quick ramp, at 1 it melts almost all the way to where the
-  // hover-to-background stop takes over.
-  float shapeToHoverEdge = mix(-0.6, 0.35, uColorBlendSoftness);
-  float shapeToHover = smoothstep(-1.0, shapeToHoverEdge, t);
-  float hoverToBg = smoothstep(0.4, 1.0, t);
-
-  // Scaling shapeToHover itself (rather than the mix below it) keeps this
-  // leak-free at any amount: at 0 the shape simply never tints toward
-  // hover color and this stage is a no-op, at 1 it's the full stop above
-  // — and the still-later hoverToBg mix always starts from whatever this
-  // produced, so there's never a point where raw background reappears.
-  vec3 col = mix(uColShape, uColHover, shapeToHover * uHoverColorAmount);
-  col = mix(col, uColBg, hoverToBg);
+  // Where the gradient passes through the hover-tinted midpoint color —
+  // slides outward as softness goes up, stretching the shape-to-hover half
+  // across more of the band instead of reaching it almost immediately.
+  float mid = mix(-0.6, 0.35, uColorBlendSoftness);
+  // The midpoint itself folds in hoverColorAmount, so at 0 it's exactly
+  // the shape color (the whole gradient degenerates to a plain shape/bg
+  // edge) and at 1 it's the full hover color -- both segments below mix
+  // toward/from this same value, so they meet with no gap or plateau.
+  vec3 midColor = mix(uColShape, uColHover, uHoverColorAmount);
+  vec3 col = t <= mid
+    ? mix(uColShape, midColor, smoothstep(-1.0, mid, t))
+    : mix(midColor, uColBg, smoothstep(mid, 1.0, t));
 
   gl_FragColor = vec4(col, 1.0);
 }
